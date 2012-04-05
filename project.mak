@@ -41,19 +41,25 @@ LOG_STATIC_CFG := $(SPATH)static/config.txt
 LOG_TEST_H := $(OPATH)flog_test.h
 LOG_TEST_CFG := $(SPATH)test/config.txt
 
-define LOG_TEMPLATE =
-$($(1)_H) : $(LOG_CONFIG_PL) $($(1)_CFG)
-	$(QUIET)$(ECHO) "Build $$@ from $$+"; \
-        set -e; \
-        $(PERL) $$+ > $$@.tmp; \
-        $(MV) $$@.tmp $$@
-$($(1)_CFG) :
-	@$(ECHO) "Config file doesn't exist: $$@"; exit -1
-FORCE_HEADERS += $($(1)_H)
-endef
 
-LGS := LOG_EXAMPLE LOG_SIMPLE LOG_STATIC LOG_TEST
-$(foreach LG,$(LGS),$(eval $(call LOG_TEMPLATE,$(LG))))
+LOGH := $(LOG_EXAMPLE_H) $(LOG_SIMPLE_H) $(LOG_STATIC_H) $(LOG_TEST_H)
+LOGCFG := $(LOG_EXAMPLE_CFG) $(LOG_SIMPLE_CFG) $(LOG_STATIC_CFG) $(LOG_TEST_CFG)
+
+$(LOGH) : $(LOG_CONFIG_PL)
+	$(QUIET)$(ECHO) "Build $@ from $+"; \
+    set -e; \
+    $(PERL) $+ > $@.tmp; \
+    $(MV) $@.tmp $@
+
+$(LOG_EXAMPLE_H) : $(LOG_EXAMPLE_CFG)
+$(LOG_SIMPLE_H) : $(LOG_SIMPLE_CFG)
+$(LOG_STATIC_H) : $(LOG_STATIC_CFG)
+$(LOG_TEST_H) : $(LOG_TEST_CFG)
+
+FORCE_HEADERS += $(LOGH)
+
+$(LOGCFG) :
+	@$(ECHO) "Config file doesn't exist: $$@"; exit -1
 
 
 # Rule for building tags
