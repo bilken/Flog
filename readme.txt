@@ -31,7 +31,7 @@ Samples
         definitions. It is a C-only program, skipping C++ elements.
         Pass dynamic log settings on the command line.
 
-        Simple/default log definitions:
+        Static/default log definitions:
             simple/config.txt
             simple/flog.h
 
