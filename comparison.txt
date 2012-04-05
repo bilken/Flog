@@ -1,0 +1,13 @@
+
+Logging:
+    boost::log
+    Pantheios
+    Log4cxx
+    Log4c
+
+
+Build:
+    PreMake
+    CMake
+    Maven
+

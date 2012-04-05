@@ -1,0 +1,9 @@
+# Log setting overrides for release builds
+AB INFO CRIT
+CDEF INFO CRIT
+XYZ INFO CRIT
+
+# timestamp and sev/mod are always on
+++timestamp
+++sevmod
+

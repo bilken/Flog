@@ -1,0 +1,24 @@
+Application targets:
+  app         Build all applications
+  test_app    Build all tests
+
+Test targets:
+  test        Build and run all tests
+  ftest       Build and run all functional tests
+  utest       Build and run all unit tests
+
+Other targets:
+  all         Build all app and test targets
+  tags        Generate tags using ctags
+
+  clean       Remove all object and dependency files
+
+Information:
+  Add 'QUIET=' in order to see shell lines being executed
+  Add 'NO_DEPENDENCIES=1' to skip dependency generation
+  Add 'RELEASE=1' to build without debugging and optimizations
+
+  To get preprocessor output, build $(OPATH)file-path/file-name.i
+  To get an assembly listing, build $(OPATH)file-path/file-name.lst
+    Note that file-path starts at the this makefile's dir.
+

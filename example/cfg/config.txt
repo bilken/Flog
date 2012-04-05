@@ -1,0 +1,18 @@
+
+# Define severities, from most to least important
+(ERROR, WARN, CRIT, INFO, DEBUG, NOISE)
+
+# Define modules and their default/max severities
+#    NAME max-severity default-severity
+AB NOISE INFO
+CDEF NOISE INFO
+XYZ NOISE INFO
+LOG INFO INFO
+
+# Define format
++timestamp
+-thread
++sevmod
+-fileline
+-function
+
