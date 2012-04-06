@@ -1,0 +1,558 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Logging Tradeoffs</title>
+        <meta name="author" content="Billy Kennemer"/>
+        <meta name="description" content="Tradeoffs involved with one particular C/C++ logging framework."/>
+    </head>
+    <body>
+
+<h1>Logging Tradeoffs</h1>
+
+<h2>Contents</h2>
+<ul>
+    <li><a href="#preface">Preface</a></li>
+    <li><a href="#vision">Vision</a></li>
+    <li><a href="#implementation">Implementation</a></li>
+    <li><a href="#review">Review</a></li>
+    <li><a href="#issues">Issues</a></li>
+</ul>
+
+
+<hr/>
+<a name="preface"></a>
+<h2>Preface</h2>
+
+<p>
+    Back in 2010, I worked on an embedded C/C++ project that had some
+    terrible logging code. The target platforms had no debug facilities
+    (JTAG or otherwise), just some slow serial output. The lack of
+    debugging features made logging a critical feature. Yet, it was
+    really terrible.
+</p>
+<p>
+    It was clear what was <b>wrong</b> with the existing logging code:
+    <ul>
+        <li>It was incosistent. Different modules used different logging
+            APIs (I guess depending on who wrote it or when). Different
+            compile-time configurations were required to enable the code
+            in each type.</li>
+        <li>Compile-time configuration was largely all or nothing. There
+            was no fine-grained control of small portions of the code
+            base. Enabling debug level logging bloated the code size so
+            much that it wouldn't load on some of the target platforms. On
+            all target platforms, debug logging would flood the serial
+            port and make the product unusable. In other words, the
+            compile-time configuration was useless because it lacked
+            fine-grained control.</li>
+        <li>There was no run-time configuration.</li>
+    </ul>
+</p>
+<p>
+    Unfortunately -- or perhaps exactly what one should expect in this
+    profession -- the customer asked us to change as little as possible
+    to get the features they wanted. That meant I couldn't just go through
+    and "fix" all logging code.
+</p>
+<p>
+    I'm not a complainer (much), so I added temporary debug features where
+    needed. If the box wasn't behaving right, I'd pepper the suspect code
+    with debug output that would print the file name and line number only.
+    I could get a pretty good handle on what was going on without flooding
+    the serial port or changing the system's behavior too much. I also
+    added an optional circular buffer that would store the last ~32 KB of
+    log output and only send on the serial port after a bad state had been
+    detected.
+</p>
+<p>
+    Meanwhile, another group at our office was working in parallel on
+    porting the system to yet another platform. Like my group, they were
+    not permitted to rewrite the icky portions. But they could write their
+    brand new platform code <b><em>right</em></b>. They wrote a logging API
+    that included compile-time configuration of severities on a per-module
+    basis. I thought it was pretty good. I thought it could be better.
+</p>
+<p>
+    Then our half of the project was discontinued. And a new internal
+    project was created to make an actual product. I was assigned to
+    make one of the core components on that new product. At that moment,
+    I vowed to do logging right because of the pain I'd suffered the
+    whole year prior.
+</p>
+<p>
+    Fast forward to now, I've been granted permission to shared this code 
+    and my experiences around it. Thanks to
+    <a href="http://www.flec.tv">Flashlight</a>.
+</p>
+
+
+<hr/>
+<a name="vision"></a>
+<h2>Vision</h2>
+
+<p>
+    The main features I wanted from logging APIs:
+    <ul>
+        <li>Consistency across ALL code</li>
+        <li>Simple syntax</li>
+        <li>Zero cost (or close to it) when inhibited</li>
+        <li>Run time configurability on a per-module basis</li>
+        <li>Configurable output formatting</li>
+        <li>Configurable output destination(s)</li>
+        <li>Compatible with C and C++</li>
+        <li>Thread safe (i.e. ordered, un-mangled output)</li>
+    </ul>
+</p>
+<p>
+    These requirements all seemed compatible, so I set out to design and
+    write the code (sometimes not in that particular order...). Mostly,
+    I'd just ask myself questions and try to come up with answers until
+    I ran out of questions I couldn't answer. Is that how design is
+    supposed to work?
+</p>
+<p>
+    The current implementation of what I now call
+    <a href="http://github.com/bilken/Flog/"> Flog</a> is available for
+    viewing.
+</p>
+
+
+<hr/>
+<a name="implementation"></a>
+<h2>Implementation</h2>
+
+<h3>"What should log calls look like?"</h3>
+<p>
+    I happen to like printf-style syntax, so I decided it could just do
+    that. As far as the severity and module specification, I was not so
+    sure. My first try looked something like this, partly because that's
+    what'd I'd seen before (from the other group's project in the Preface):
+    <pre>
+    FLOG_DEBUG(MODULE1, "Some stuff %d\n", x);
+    </pre>
+</p>
+
+<h3>"How do I reduce the run-time cost of inhibited log statements
+    to zero?"</h3>
+<p>
+    Some compilers will remove unused statements like
+    <pre>
+    if (0) {...}
+    </pre>
+    Some won't, though. So I decided the preprocessor would be required
+    for a truly portable solution to compile-time configuration.
+</p>
+
+<h3>"How do I define modules and severities?"</h3>
+<h3>"How do I define macros for each module and severity?"</h3>
+<p>
+    These questions were tricky and are the source of one of the grossest
+    parts of the implementation. I decided that it'd be easiest to define
+    the severities and modules in a seperate configuration file. I chose
+    to write a Perl script, flog_config.pl, to parse the configuration and
+    generate a header with all the necessary declarations.
+</p>
+<p>
+    However, I could solve these issues with X-macros. Something like this:
+    <pre>
+    /* Available severities */
+    #define FLOG_SEVERITIES \
+        FLOG_SVR(DEBUG) \
+        FLOG_SVR(INFO) \
+        FLOG_SVR(ERROR) \
+
+    /* Module name, compile-time maximum, run-time default */
+    #define FLOG_MODULES \
+        FLOG_MOD(FOO, DEBUG, INFO) \
+        FLOG_MOD(BAR, INFO, ERROR) \
+
+    ...
+
+    enum flog_svr {
+        FLOG_SVR_INVALID = -1,
+    #define FLOG_SVR(SVR) FLOG_SVR_##MOD,
+        FLOG_MODULES
+    #undef FLOG_SVR
+        FLOG_SVR_NONE,
+    };
+        
+    enum flog_mod_max {
+    #define FLOG_MOD(MOD, MAX, DEF) FLOG_MOD_MAX_##MOD = FLOG_SVR_##MAX,
+        FLOG_MODULES
+    #undef FLOG_MOD
+    };
+
+    #define FLOG(SEV, MOD, FMT, ARGS...) \
+        if (FLOG_SVR_##SEV &gt;&eq; FLOG_MOD_MAX_##MOD)) { \
+            _FLOG_DO(SEV, MOD, FMT , ##ARGS ); \
+        }
+    </pre>
+    However, the X-macro approach will depend on the compiler to optimize
+    out a constant condition, such as:
+    <pre>
+    if (3 &lt; 2) { ... }
+    </pre>
+    I'd already decided not to do that.
+</p>
+
+<h3>"Why is the severity in the macro name but the module is a parameter?"</h3>
+<p>
+    Yeah, that's weird. So I made it so that both of the following are valid:
+    <pre>
+    FLOG(FOOSEV, BARMOD, "fmt %d\n", num);
+    FLOG_FOOSEV_BARMOD("fmt %d\n", num);
+    </pre>
+</p>
+
+<h3>"Are variadic macros universally supported?"</h3>
+<p>
+    Nope. There's basically GCC-style, C99 or just "no". It's not
+    too hard to support both GCC and C99 styles with a couple #ifdefs.
+    There is a little mess with C99 in order to support the no-parameter
+    case:
+    <pre>
+    FLOG(FOOSEV, BARMOD, "No extra args\n");
+    </pre>
+    The mess is that I had to pass an extra empty string parameter
+    and add an extra %s to the format string. Oh, well.
+</p>
+<p>
+    I haven't fully decided what to do if variadic macros aren't
+    supported. My original implementation was going to have compile-time
+    configuration but no run-time configuration in such cases. An extra
+    preprocessing tool would be run on each source file to convert all
+    FLOG(FOOSEV, BARMOD, ...) calls to DP_FLOG_FOOSEV_BARMOD(...) which
+    could then be defined to nothing to inhibit the call or to the output
+    routine if not. The extra script was kludgy, so I dropped it.
+</p>
+
+<h3>"How do I do run-time configuration?"</h3>
+<p>
+    At first, I wrote flog_get_severity() and flog_set_severity()
+    (or something like that). But I never used it directly in my projects.
+    Instead, I always ended up writing a little wrapper that would take
+    command line or console input and adjust the logging accordingly.
+    So I just plopped that code in flog.c and called it good. It now
+    exists as:
+    <pre>
+    int flog_interact_s(const char *arg, char *outStr, size_t outStrLen);
+    </pre>
+</p>
+<p>
+    This call outputs to a user-supplied string because I wasn't sure
+    what else to output to. It could send directly to FLOG_PRINTF(),
+    but then the syntax won't match other FLOG() calls. Or it could
+    require that there be a LOG module, but that's hidden behavior.
+    So I settled on letting the application decide where output should
+    go, if anywhere.
+</p>
+
+<h3>"vsnprintf() crashes sometimes...why?"</h3>
+<p>
+    I discovered that vsnprintf() isn't strict about the string length
+    I was passing in (at least with glibc). So it was crashing if
+    it ran out of space (because it would keep writing past the end
+    of my allocated output buffer!).
+    My solution was to ... allocate a bigger buffer. Note that this
+    only matters in calls to flog_interact_s() (or the test code)
+    as that's the only thing that uses this call. In practice, I haven't
+    had any problems with this. I definitely wouldn't expose this
+    functionality to anything user accessible, though.
+</p>
+
+<h3>"What about C++?"</h3>
+<p>
+    At first, I was going to support output of both std::string and
+    std::ostream arguments. I dropped the std::string because strings
+    can be output by an ostream.
+    <pre>
+    FLOGS(DEBUG, MODULE1, "Text " &lt;&lt; value &lt;&lt; std::endl);
+    </pre>
+    Under the covers, it creates a std::ostringstream from the contents
+    of FLOGS() and passes that to the internal printf-style function as
+    a single string argument (i.e. "%s", oss.str().c_str()). Note that
+    it needs to check the run-time setting before doing any real work.
+    If the module's severity is inhibited, the ostringstream should not
+    get used (or created on the stack if possible).
+</p>
+<p>
+    Note that since C++ output is a single expression, variadic macro
+    support isn't required. I suddenly like printf-style syntax less...
+</p>
+
+<h3>"What about format items, like time stamp, svr/mod, file/line, thread id?"</h3>
+<p>
+    Given GCC and C99 style variadic macros, I can use string concatenation
+    to add extra formatting arguments to a printf string. And I can insert
+    extra arguments either before or after all other existing arguments.
+    I chose to put all the extra formatting items before, but that could be
+    changed. So the output looks something like:
+    <pre>
+    2012-04-06 14:30:53.415 6056 INFO[TEST] test.cpp[55] main() Test output works!
+    </pre>
+</p>
+<p>
+    Note, the timestamp output probably requires storage. I let the user
+    declare the following macros to instantiate and pass the required storage:
+    <pre>
+    FLOG_TIME_DEC
+    FLOG_TIME_ARG
+    </pre>
+</p>
+<p>
+    Here's an approximation of what a FLOG call looks like after it's passed
+    the compile-time and run-time checks (for GCC-style varadic macros):
+    <pre>
+    FLOG_TIME_DEC;
+    FLOG_PRINTF("%s%d %s%s%s%s%s" FMT ,
+            FLOG_TIME(FLOG_TIME_ARG),
+            FLOG_THREAD() ,
+            #SEVERITY "[" #MODULE "] ",
+            FILE_SHORTEN(__FILE__),
+            LINETOSTRING(__LINE__),
+            __FUNCTION__,
+            "() ",
+            ##ARGS);
+    </pre>
+</p>
+<p>
+    The flog_config.pl script can only emit the format options that are
+    enabled at compile-time.
+</p>
+<p>
+    I'm not sure what would be required to support these features with
+    non-variadic macros.
+</p>
+
+<h3>"Can formatting options be both compile-time and run-time configurable?</h3>
+<p>
+    For run-time, each option can check a flag to see if it's currently
+    enabled and then pass in either an empty string or the valid value
+    accordingly.
+</p>
+<p>
+    <pre>
+    FLOG_TIME_DEC;
+    FLOG_PRINTF("%s%d %s%s%s%s%s" FMT ,
+            FLOG_FLAG(TIMESTAMP) ? FLOG_TIME(FLOG_TIME_ARG) : "" ,
+            FLOG_THREAD() ,
+            FLOG_FLAG(SEVMOD) ? #SEVERITY "[" #MODULE "] " : "" ,
+            FLOG_FLAG(FILELINE) ? FILE_SHORTEN(__FILE__) : "" ,
+            FLOG_FLAG(FILELINE) ? LINETOSTRING(__LINE__) : "" ,
+            FLOG_FLAG(FUNCTION) ? __FUNCTION__ : "" ,
+            FLOG_FLAG(FUNCTION) ? "() " : "" ,
+            ##ARGS);
+    </pre>
+</p>
+<p>
+    Note that the flog_config.pl script allows the user to specify each
+    of these as being always on or off, or run-time configurable. When
+    they're always on, the FLOG_FLAG() section and ternary operator is
+    omitted. When they're always off, the format and argument(s) for that
+    format option are fully omitted.
+</p>
+<p>
+    Also, that's getting pretty hefty...
+</p>
+
+<h3>"Can the code size and number of parameters be reduced?"</h3>
+<p>
+    At this point, there are up to 7 extra parameters to printf:
+    <ul>
+        <li>timestamp string</li>
+        <li>thread id</li>
+        <li>severity[module]</li>
+        <li>filename</li>
+        <li>line number</li>
+        <li>function name</li>
+        <li>the "()" string for the function name</li>
+    </ul>
+    Other than disabling them, is there a way to reduce size?
+    The timestamp and thread id could be generated from the output
+    function itself instead of getting created and passed by every
+    invocation of FLOG.  The severity/module, filename, line number
+    and function name, on the other hand, all must be referenced
+    (and/or passed) locally since that's where they come from.
+    I haven't bothered to fix this since the code size difference
+    hasn't been a big deal.
+</p>
+<p>
+    Note also that the timestamp can be generated by the remote
+    logging facility if it's sent out a serial port or over UDP. 
+</p>
+<p>
+    Lastly, the run-time configuration code itself can be disabled
+    by setting FLOG_STATIC. The 'static' example does this just
+    'cause it can. I've worked on platforms in the past that had
+    very little breathing room for debug code. In such cases,
+    every little bit counts. Disabling run-time checks improves
+    performance slightly, too, so that's another help on such platforms.
+</p>
+
+<h3>"What about redundant file name and module/severity strings?"</h3>
+<p>
+    These are used "as-is" in the code. That way, the compiler has the
+    option of re-using duplicated strings. Of course, some compilers
+    are not sufficiently smart.
+</p>
+<p>
+    Note that this is in contrast to concatenating the strings in
+    each call. For example, the following could be done to perhaps
+    boost performance at the expense of code size:
+    <pre>
+    FLOG_PRINTF(
+            #SEVERITY "[" #MODULE "] "
+            __FILE__
+            LINETOSTRING(__LINE__)
+            "%s%s%s() " FMT ,
+            __FUNCTION__,
+            ##ARGS);
+    </pre>
+    Note also that the formatting is no longer run-time configurable.
+</p>
+
+<h3>"Can the format ordering be changed?"</h3>
+<p>
+    The flog_config.pl script could be tweaked to do so, perhaps via
+    encodings in the configuration file. I'd probably just hardcode
+    things if I needed to change the order.
+</p>
+
+<h3>"What about the output method?"</h3>
+<p>
+    Some logging frameworks have log rotation and other advanced
+    features. Flog doesn't bother. In most cases, applications/daemons
+    can write directly to a log file on disk and external entities
+    like logrotate can manage log sizes.
+</p>
+<p>
+    If log sizes or performance are critical, the FLOG_PRINTF routine
+    can be overridden with something more creative. Note that it
+    should be kept thread safe if the application is multi-threaded.
+</p>
+
+<h3>"Installation and configuration is a disaster."</h3>
+<p>
+    That wasn't a question.
+</p>
+<p>
+    Regarding the configuration file used by the flog_config.pl script,
+    it's not a formal format. But it's pretty simple and intuitive
+    (says the guy that created it...). I think xml/xsd would be
+    super overkill. Not sure what else I could do. Maybe make it
+    perl code that gets imported by the perl script...? Eek. Or leave
+    it alone.
+</p>
+<p>
+    As for installation, the Flog framework is mostly a header, the one
+    generated by the flog_config.pl script. For run-time configuration,
+    however, the companion flog.c file must be compiled and linked into
+    a project. The icky part is that flog.c must be recompiled with the
+    header generated by flog_config.pl. But that header is user-defined.
+</p>
+<p>
+    My current solution is to have the user either modify flog.c
+    to include the appropriate header, or #include flog.c in a source
+    file that includes the user's header. Either way, yuck.
+</p>
+<p>
+    Don't forget that the flog header must be regenerated whenever the
+    configuration changes. This should be added to the build system
+    if possible.
+</p>
+<p>
+    And this is what makes me wonder if the X-macro only solution might
+    have been the better compromise.
+</p>
+
+
+<hr/>
+<a name="review"></a>
+<h2>Review</h2>
+
+<p>
+    How close did I stay to the vision?
+</p>
+
+<h3>Consistency across ALL code</h3>
+<p>
+    This is more a question of implementation within a project or series
+    of projects. An easy-to-use interface facilitates that, though. Other
+    than installation and first-time configuration, I think Flog is easy
+    to use. Just include the header file and write FLOG calls.
+</p>
+
+<h3>Simple syntax</h3>
+<p>
+    The inclusion of both the severity and the module in each log call
+    increases the amount of syntax compared to some logging tools.
+</p>
+
+<h3>Zero cost (or close to it) when inhibited</h3>
+<p>
+    Mission accomplished ... at the expense of configuration and
+    installation issues.
+</p>
+
+<h3>Run time configurability on a per-module basis</h3>
+<p>
+    Yup
+</p>
+
+<h3>Configurable output formatting</h3>
+<p>
+    Yup
+</p>
+
+<h3>Configurable output destination(s)</h3>
+<p>
+    Yup
+</p>
+
+<h3>Works with C and C++</h3>
+<p>
+    Yup-ish. It's really just C. Though C is a subset (of sorts) of C++.
+    The C++ ostream interface requires parentheses which is a little
+    off.
+</p>
+
+<h3>Thread safe (i.e. each log line is whole)</h3>
+<p>
+    Yup.
+</p>
+<p>
+    Only one FLOG_PRINTF call is made per log call. Although, this
+    depends on FLOG_PRINTF being thread-safe. Usually fprintf() is.
+    The one naughty part is that the timestamp is gleaned in a seperate
+    call before invoking FLOG_PRINTF, so it might be out-of-date slightly.
+    That is, a chronology (for either single or multi processing):
+    <pre>
+    1 ThreadA.FLOG()
+    2 ThreadA.timestamp()
+    4 ThreadB.FLOG()
+    5 ThreadB.timestamp()
+    6 ThreadB.FLOG_PRINTF()
+    7 ThreadA.FLOG_PRINTF()
+    </pre>
+    Note that the timestamps may be out of order (if the timestamp
+    precision is sufficiently high).
+</p>
+
+
+<hr/>
+<a name="issues"></a>
+<h2>Issues</h2>
+
+<p>
+    Things I'd like to solve but am not sure how:
+    <ul>
+        <li>Support for compilers that don't non-variadic macros</li>
+        <li>Make installation and initial setup easier</li>
+        <li>Get rid of perl script and/or header generation</li>
+    </ul>
+</p>
+
+
+</body>
+</html>
+
