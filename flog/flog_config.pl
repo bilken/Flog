@@ -314,6 +314,10 @@ extern const char *flog_file_name_shorten(const char *fn);
 #define FLOG_TIME_ARG ""
 #endif
 
+#ifndef FLOG_THREAD
+#define FLOG_THREAD 0
+#endif
+
 #define FLOG_VA_NONE 0
 #define FLOG_VA_GCC  1
 #define FLOG_VA_C99  2
