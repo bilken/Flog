@@ -9,6 +9,7 @@
 #define FLOG_MODULE_LIST \
     FLOG_MODULE_LIST_ITEM( AB, DEBUG, INFO ) \
     FLOG_MODULE_LIST_ITEM( CDEF, DEBUG, INFO ) \
+    FLOG_MODULE_LIST_ITEM( GHI, INFO, INFO ) \
     FLOG_MODULE_LIST_ITEM( LOG, INFO, INFO ) \
 
 /* Note that format options cannot be defined */

@@ -37,6 +37,7 @@ int main(int argc, char ** argv)
     FLOG(ERROR, AB, "No arguments are problematic sometimes\n");
     FLOG(INFO, AB, "Normal printf: %u %s\n", 33, "INFO[AB] works!");
     FLOGS(INFO, CDEF, "Normal ostream: " << 44 << ", okay!" << std::endl);
+    FLOGS(DEBUG, GHI, "This item is disabled at compile-time" << std::endl);
 
     return 0;
 }

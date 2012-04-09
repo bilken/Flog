@@ -3,6 +3,7 @@ APP_SOURCES := \
     example/example.cpp \
     simple/simple.c \
     static/static.cpp \
+    xconfig/xconfig.cpp \
 
 LIBNAME := libflog
 
