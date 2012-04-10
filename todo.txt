@@ -1,0 +1,5 @@
+Add run-time default and always-on feature to x-macro format options
+Refactor x-macro config with perl config
+Move sample programs under common 'sample' directory
+Add 'flog' to include path
+
