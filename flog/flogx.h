@@ -120,9 +120,9 @@ extern const char *flog_file_name_shorten(const char *fn);
 #define FLOG_VA_GCC  1
 #define FLOG_VA_C99  2
 
-#if 0 //defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__)
 #  define FLOG_VA_TYPE FLOG_VA_GCC
-#elif 01 /* C-99 compiler */
+#elif 0 /* C-99 compiler */
 #  define FLOG_VA_TYPE FLOG_VA_C99
 #else   /* No variadic macros */
 #error "not supported"
