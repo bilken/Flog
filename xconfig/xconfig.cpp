@@ -9,11 +9,10 @@ static int parse_args(int argc, char ** argv)
 {
     while (argc-- > 1) {
         ++argv;
-        if (**argv != '-') {
-            char buf[1024];
-            flog_interact_s(*argv, buf, sizeof(buf));
-            FLOG(INFO, LOG, "%s", buf);
-        } else {
+        char buf[1024];
+        int r = flog_interact_s(*argv, buf, sizeof(buf));
+        FLOG(INFO, LOG, "%s", buf);
+        if (r) {
             printf("%s",
                 "Xconfig log output\n"
                 "  OPTION   Interact with log options\n"
@@ -37,6 +36,7 @@ int main(int argc, char ** argv)
     FLOG(ERROR, AB, "No arguments are problematic sometimes\n");
     FLOG(INFO, AB, "Normal printf: %u %s\n", 33, "INFO[AB] works!");
     FLOGS(INFO, CDEF, "Normal ostream: " << 44 << ", okay!" << std::endl);
+    FLOGS(DEBUG, CDEF, "This item is inhibited at run-time by default" << std::endl);
     FLOGS(DEBUG, GHI, "This item is disabled at compile-time" << std::endl);
 
     return 0;

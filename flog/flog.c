@@ -94,6 +94,9 @@ static const char sstr_list[][8] =
 #define FLOG_SEVERITY_LIST_ITEM(s) #s,
     FLOG_SEVERITY_LIST
 #undef FLOG_SEVERITY_LIST_ITEM
+#ifdef FLOGX
+    "NONE",
+#endif
 };
 
 
@@ -267,9 +270,17 @@ static const struct
 }
 flog_cfg[] =
 {
+#ifdef FLOGX
+#undef FLOG_FORMAT_LIST_ITEM
+#define FLOG_FORMAT_LIST_ITEM(name, fmt) {#name, FLOG_FLAG_##name},
+    FLOG_FORMAT_LIST
+#undef FLOG_FORMAT_LIST_ITEM
+#define FLOG_FORMAT_LIST_ITEM(name, fmt) fmt
+#else
 #define FLOG_FLAGS_LIST_ITEM(name, bit) {#name, bit},
         FLOG_FLAGS_LIST
 #undef FLOG_FLAGS_LIST_ITEM
+#endif
 };
 
 static void _print_configs(psn_t * p)
@@ -331,11 +342,11 @@ int flog_interact_s(const char *arg, char *outStr, size_t outStrLen)
     r = _log_config(str, sizeof(str), arg);
     if (r == 1) {
         flog_psnprintf(&p, "Set configuration '%s'\n", str);
-        return r;
+        return 0;
     } else if (r == -1) {
         flog_psnprintf(&p, "Unknown configuration '%s'\n", str);
         _print_configs(&p);
-        return r;
+        return -1;
     }
 
     _parse_string(str, sizeof(str), &arg);
@@ -362,8 +373,7 @@ int flog_interact_s(const char *arg, char *outStr, size_t outStrLen)
         flog_psnprintf(&p, "Unknown severity '%s' %d\n", str, s);
         _print_severities(&p);
         return -1;
-    }
-    else {
+    } else {
         flog_psnprintf(&p, "Current setting:\n");
     }
 

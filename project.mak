@@ -64,7 +64,7 @@ $(LOGCFG) :
 
 
 # Rule for building tags
-CTAGS_PATHS := flog example simple static $(OPATH)
+CTAGS_PATHS := flog example simple static xconfig $(OPATH)
 tags :
 	@$(ECHO) "Build $@"
 	$(QUIET)$(CTAGS) -h .c.h.cpp.hpp --langmap=C++:.c.cpp.h.hpp --extra=q -R $(CTAGS_PATHS)

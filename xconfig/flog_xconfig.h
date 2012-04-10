@@ -12,7 +12,22 @@
     FLOG_MODULE_LIST_ITEM( GHI, INFO, INFO ) \
     FLOG_MODULE_LIST_ITEM( LOG, INFO, INFO ) \
 
-/* Note that format options cannot be defined */
+#define LINE2STR(X) #X
+#define LINETOSTRING(X) "[" LINE2STR(X) "] "
+
+#define FLOG_FORMAT_LIST \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FUNCTION, "%s") \
+    FLOG_FORMAT_LIST_ITEM(PAREN, "%s") \
+
+#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
+    FLOG_ARGS_LIST_ITEM(SEVMOD, #SEVERITY "[" #MODULE "] ", "") \
+    FLOG_ARGS_LIST_ITEM(FILE, flog_file_name_shorten(__FILE__), "") \
+    FLOG_ARGS_LIST_ITEM(LINE, LINETOSTRING(__LINE__), "") \
+    FLOG_ARGS_LIST_ITEM(FUNCTION, __FUNCTION__, "") \
+    FLOG_ARGS_LIST_ITEM(PAREN, "() ", "") \
 
 #define FLOGX
 #include "../flog/flogx.h"

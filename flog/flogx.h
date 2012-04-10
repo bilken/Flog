@@ -12,9 +12,17 @@
     FLOG_MODULE_LIST_ITEM( AB, DEBUG, INFO ) \
     FLOG_MODULE_LIST_ITEM( CDEF, DEBUG, INFO ) \
 
+#define FLOG_FORMAT_LIST \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
+
+#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
+    FLOG_ARGS_LIST_ITEM(SEVMOD, #SEVERITY "[" #MODULE "] ", "") \
+    FLOG_ARGS_LIST_ITEM(FILE, flog_file_name_shorten(__FILE__), "") \
+
 #else
-#if !defined(FLOG_SEVERITY_LIST) || !defined(FLOG_MODULE_LIST)
-#error "Missing FLOG_SEVERITIES/FLOG_MODULES defintion"
+#if !defined(FLOG_SEVERITY_LIST) || !defined(FLOG_MODULE_LIST) || !defined(FLOG_FORMAT_LIST)
+#error "Missing FLOG_SEVERITIES/FLOG_MODULES/FLOG_FORMAT defintion"
 #endif
 #endif
 
@@ -24,7 +32,7 @@ enum {
     FLOG_SEVERITY_LIST
 #undef FLOG_SEVERITY_LIST_ITEM
     FLOG_SVR_NONE,
-    FLOG_SVR_NUM_ELEMENTS = 7,
+    FLOG_SVR_NUM_ELEMENTS,
 
 #define FLOG_MODULE_LIST_ITEM(MOD, MAX, DEF) FLOG_MOD_MAX_##MOD = FLOG_SVR_##MAX,
     FLOG_MODULE_LIST
@@ -41,22 +49,23 @@ enum {
 };
 
 enum {
-    FLOG_FLAG_THREAD = 1,
-    FLOG_FLAG_FUNCTION = 2,
-    FLOG_FLAG_TIMESTAMP = 4,
-    FLOG_FLAG_SEVMOD = 8,
-    FLOG_FLAG_FILELINE = 16,
+    FLOG_FLAGBIT_ZERO = 0,
+#define FLOG_FORMAT_LIST_ITEM(NAME, FMT) FLOG_FLAGBIT_##NAME,
+    FLOG_FORMAT_LIST
+#undef FLOG_FORMAT_LIST_ITEM
+
+    FLOG_FLAG_ZERO = 0,
+#define FLOG_FORMAT_LIST_ITEM(NAME, FMT) FLOG_FLAG_##NAME = 1 << FLOG_FLAGBIT_##NAME,
+    FLOG_FORMAT_LIST
+#undef FLOG_FORMAT_LIST_ITEM
 };
 
-#define FLOG_FLAGS_LIST \
-    FLOG_FLAGS_LIST_ITEM(THREAD, 1) \
-    FLOG_FLAGS_LIST_ITEM(FUNCTION, 2) \
-    FLOG_FLAGS_LIST_ITEM(TIMESTAMP, 4) \
-    FLOG_FLAGS_LIST_ITEM(SEVMOD, 8) \
-    FLOG_FLAGS_LIST_ITEM(FILELINE, 16) \
+#define FLOG_FORMAT_LIST_ITEM(NAME, FMT) FMT
+
+#define FLOG_ARGS_LIST_ITEM(NAME, ARG, DISARG) , FLOG_FLAG(NAME) ? ARG : DISARG
 
 #define FLOG_FLAG(FF) (flog_flags & FLOG_FLAG_##FF)
-#define FLOG_FLAGS_DEFAULT (FLOG_FLAG_TIMESTAMP | FLOG_FLAG_SEVMOD)
+#define FLOG_FLAGS_DEFAULT (0x7f)
 
 #ifdef __cplusplus
 #include <sstream>
@@ -103,32 +112,21 @@ extern const char *flog_file_name_shorten(const char *fn);
 #define FLOG_VSNPRINTF vsnprintf
 #endif
 
-#ifndef FLOG_TIME
-#define FLOG_TIME
-#undef FLOG_TIME_DEC
-#define FLOG_TIME_DEC
-#undef FLOG_TIME_ARG
-#define FLOG_TIME_ARG ""
-#endif
-
-#ifndef FLOG_THREAD
-#define FLOG_THREAD() 0
+#ifndef FLOG_FORMAT_DEC
+#define FLOG_FORMAT_DEC
 #endif
 
 #define FLOG_VA_NONE 0
 #define FLOG_VA_GCC  1
 #define FLOG_VA_C99  2
 
-#if defined(__GNUC__) || defined(__clang__)
+#if 0 //defined(__GNUC__) || defined(__clang__)
 #  define FLOG_VA_TYPE FLOG_VA_GCC
-#  define FILE_SHORTEN(fn) flog_file_name_shorten(fn)
-#elif 0 /* C-99 compiler */
+#elif 01 /* C-99 compiler */
 #  define FLOG_VA_TYPE FLOG_VA_C99
-#  define FILE_SHORTEN(fn) fn
 #else   /* No variadic macros */
 #error "not supported"
 #  define FLOG_VA_TYPE FLOG_VA_NONE
-#  define FILE_SHORTEN(fn) fn
 #endif
 
 #ifndef FLOG_STATIC
@@ -149,9 +147,6 @@ extern const char *flog_file_name_shorten(const char *fn);
 #define IF_FLOG_SET(S, M)
 #endif
 
-#define LINE2STR(X) #X
-#define LINETOSTRING(X) "[" LINE2STR(X) "] "
-
 #define FLOGSTRING(SEVERITY, MODULE, STR) FLOG(SEVERITY, MODULE, "%s", (STR).c_str())
 
 #ifdef FLOGX
@@ -163,28 +158,28 @@ extern const char *flog_file_name_shorten(const char *fn);
 #if FLOG_VA_TYPE == FLOG_VA_GCC
 #define FLOG(SEVERITY, MODULE, FMT, ARGS...) _FLOG_CHKDO(SEVERITY, MODULE, FMT , ##ARGS)
 #define _FLOG_DO(SEVERITY, MODULE, FMT, ARGS...) \
-    FLOG_TIME_DEC; FLOG_PRINTF("%s%d %s%s%s%s%s" FMT ,  FLOG_FLAG(TIMESTAMP) ? FLOG_TIME(FLOG_TIME_ARG) : "" ,  FLOG_THREAD() ,  FLOG_FLAG(SEVMOD) ? #SEVERITY "[" #MODULE "] " : "" ,  FLOG_FLAG(FILELINE) ? FILE_SHORTEN(__FILE__) : "" , FLOG_FLAG(FILELINE) ? LINETOSTRING(__LINE__) : "" ,  FLOG_FLAG(FUNCTION) ? __FUNCTION__ : "" , FLOG_FLAG(FUNCTION) ? "() " : "" , ##ARGS);
+    FLOG_FORMAT_DEC FLOG_PRINTF(FLOG_FORMAT_LIST FMT FLOG_ARGS_LIST(SEVERITY, MODULE) , ##ARGS)
 #define _FLOG_CHKDO(SEVERITY, MODULE, FMT, ARGS...) \
-    IF_FLOG_SET(SEVERITY, MODULE) { _FLOG_DO( SEVERITY, MODULE, FMT , ##ARGS ); }
+    do { IF_FLOG_SET(SEVERITY, MODULE) { _FLOG_DO( SEVERITY, MODULE, FMT , ##ARGS ); } } while (0)
 #define _FLOGS_CHKDO(SEVERITY, MODULE, SSTR) \
-    IF_FLOG_SET(SEVERITY, MODULE) { \
+    do { IF_FLOG_SET(SEVERITY, MODULE) { \
         std::ostringstream _mSSTR; _mSSTR << SSTR; \
         _FLOG_DO(SEVERITY, MODULE, "%s", _mSSTR.str().c_str()); \
-    }
+    } } while (0)
 #endif /* FLOG_VA_TYPE == GCC */
 
 #if FLOG_VA_TYPE == FLOG_VA_C99
 /* Note, the extra "" arg lets fmt-only FLOG() calls work */
 #define FLOG(SEVERITY, MODULE, ...) _FLOG_CHKDO(SEVERITY, MODULE, __VA_ARGS__, "")
 #define _FLOG_DO(SEVERITY, MODULE, FMT, ...) \
-    FLOG_TIME_DEC; FLOG_PRINTF("%s%d %s%s%s%s%s" FMT "%s",  FLOG_FLAG(TIMESTAMP) ? FLOG_TIME(FLOG_TIME_ARG) : "" ,  FLOG_THREAD() ,  FLOG_FLAG(SEVMOD) ? #SEVERITY "[" #MODULE "] " : "" ,  FLOG_FLAG(FILELINE) ? FILE_SHORTEN(__FILE__) : "" , FLOG_FLAG(FILELINE) ? LINETOSTRING(__LINE__) : "" ,  FLOG_FLAG(FUNCTION) ? __FUNCTION__ : "" , FLOG_FLAG(FUNCTION) ? "() " : "" , __VA_ARGS__);
+    FLOG_FORMAT_DEC; FLOG_PRINTF(FLOG_FORMAT_LIST FMT "%s" FLOG_ARGS_LIST(SEVERITY, MODULE), __VA_ARGS__)
 #define _FLOG_CHKDO(SEVERITY, MODULE, FMT, ...) \
-    IF_FLOG_SET(SEVERITY, MODULE) { _FLOG_DO( SEVERITY, MODULE, FMT, __VA_ARGS__); }
+    do { IF_FLOG_SET(SEVERITY, MODULE) { _FLOG_DO( SEVERITY, MODULE, FMT, __VA_ARGS__); } } while (0)
 #define _FLOGS_CHKDO(SEVERITY, MODULE, SSTR) \
-    IF_FLOG_SET(SEVERITY, MODULE) { \
+    do { IF_FLOG_SET(SEVERITY, MODULE) { \
         std::ostringstream _mSSTR; _mSSTR << SSTR; \
         _FLOG_DO(SEVERITY, MODULE, "%s", _mSSTR.str().c_str(), ""); \
-    }
+    } } while (0)
 #endif /* FLOG_VA_TYPE == C99 */
 
 #endif  /* __FLOGX_H__ */
