@@ -144,7 +144,11 @@ extern const char *flog_file_name_shorten(const char *fn);
 #define IF_FLOG_SET(S, M) if (flog_ms_is_set(FLOG_ENCODE(FLOG_SVR_##S, FLOG_MOD_##M)))
 #endif
 #else
+#ifdef FLOGX
+#define IF_FLOG_SET(S, M) if (FLOG_SVR_##S >= FLOG_MOD_MAX_##M)
+#else
 #define IF_FLOG_SET(S, M)
+#endif
 #endif
 
 #define FLOGSTRING(SEVERITY, MODULE, STR) FLOG(SEVERITY, MODULE, "%s", (STR).c_str())
