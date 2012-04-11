@@ -9,10 +9,3 @@ CDEF NOISE INFO
 XYZ NOISE INFO
 LOG INFO INFO
 
-# Define format
-+timestamp
--thread
-+sevmod
--fileline
--function
-

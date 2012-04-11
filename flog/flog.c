@@ -99,9 +99,7 @@ static const char sstr_list[][8] =
 #define FLOG_SEVERITY_LIST_ITEM(s) #s,
     FLOG_SEVERITY_LIST
 #undef FLOG_SEVERITY_LIST_ITEM
-#ifdef FLOGX
     "NONE",
-#endif
 };
 
 
@@ -275,17 +273,11 @@ static const struct
 }
 flog_cfg[] =
 {
-#ifdef FLOGX
 #undef FLOG_FORMAT_LIST_ITEM
 #define FLOG_FORMAT_LIST_ITEM(name, fmt) {#name, FLOG_FLAG_##name},
     FLOG_FORMAT_LIST
 #undef FLOG_FORMAT_LIST_ITEM
 #define FLOG_FORMAT_LIST_ITEM(name, fmt) fmt
-#else
-#define FLOG_FLAGS_LIST_ITEM(name, bit) {#name, bit},
-        FLOG_FLAGS_LIST
-#undef FLOG_FLAGS_LIST_ITEM
-#endif
 };
 
 static void _print_configs(psn_t * p)
@@ -294,11 +286,9 @@ static void _print_configs(psn_t * p)
 
     flog_psnprintf(p, "Configurations: '+|- CFG'\n");
     for (i = 0; i < ARRAY_COUNT(flog_cfg); i++) {
-#ifdef FLOGX
         if (flog_cfg[i].bit & FLOG_FLAGS_NONCONFIG) {
             continue;
         }
-#endif
         flog_psnprintf(p, " %c%s,",
                 (flog_flags & flog_cfg[i].bit) ? '+' : '-',
                 flog_cfg[i].name);
@@ -322,11 +312,9 @@ static int _log_config(char *cp, size_t len, const char *arg)
 
     _parse_string(cp, len, &arg);
     for (i = 0; i < ARRAY_COUNT(flog_cfg); i++) {
-#ifdef FLOGX
         if (flog_cfg[i].bit & FLOG_FLAGS_NONCONFIG) {
             continue;
         }
-#endif
         if (_str_nccmp(cp, flog_cfg[i].name) == 0) {
             if (enable) {
                 flog_flags |= flog_cfg[i].bit;

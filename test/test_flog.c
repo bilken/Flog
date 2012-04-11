@@ -37,18 +37,40 @@ static int test_printf(const char *fmt, ...)
 /*
     Override flec_log_auto.h with unit_flec_log_auto.h
     which is generated from unit_flec_log.txt
-        MIN, NONE
-        MAX, WEAK
+        MINI, NONE
+        MAXI, WEAK
         MIN_MAX, NONE, WEAK
         MAX_MIN, WEAK, NONE
         NORM, MID
         SPLIT, MID, ROBUST
 */
+#define FLOG_SEVERITY_LIST \
+    FLOG_SEVERITY_LIST_ITEM(WEAK) \
+    FLOG_SEVERITY_LIST_ITEM(MID) \
+    FLOG_SEVERITY_LIST_ITEM(ROBUST) \
+    FLOG_SEVERITY_LIST_ITEM(STRONG) \
 
-#undef FLOG_PRINTF
+#define FLOG_MODULE_LIST \
+    FLOG_MODULE_LIST_ITEM( MAXI, WEAK, WEAK ) \
+    FLOG_MODULE_LIST_ITEM( MAX_MIN, WEAK, NONE ) \
+    FLOG_MODULE_LIST_ITEM( MINI, NONE, NONE ) \
+    FLOG_MODULE_LIST_ITEM( MIN_MAX, NONE, WEAK ) \
+    FLOG_MODULE_LIST_ITEM( NORM, MID, MID ) \
+    FLOG_MODULE_LIST_ITEM( SPLIT, MID, ROBUST ) \
+
+#define FLOG_FORMAT_LIST \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FUNCTION, "%s ") \
+
+#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
+    FLOG_ARGS_LIST_ITEM(SEVMOD, CON, #SEVERITY "[" #MODULE "] ", "") \
+    FLOG_ARGS_LIST_ITEM(FILE, CON, flog_file_name_shorten(__FILE__), "") \
+    FLOG_ARGS_LIST_ITEM(LINE, CON, LINETOSTRING(__LINE__), "") \
+    FLOG_ARGS_LIST_ITEM(FUNCTION, CON, __FUNCTION__, "") \
+
 #define FLOG_PRINTF test_printf
-
-#define FLOG_VSNPRINTF vsnprintf
 
 #define FLOG_ASSERT(COND, FMT, ARGS...) \
     do { \
@@ -58,8 +80,8 @@ static int test_printf(const char *fmt, ...)
         } \
     } while (0)
 
-
-#include "flog_test.h"
+#define FLOGX
+#include "../flog/flogx.h"
 #include "../flog/flog.c"
 
 
@@ -75,7 +97,7 @@ static void test_ctime(void)
 
     /* These should be compiled in */
     init_tt();
-    FLOG(WEAK, MAX, "weak max\n");
+    FLOG(WEAK, MAXI, "weak max\n");
     cp = get_tt();
     FLOG_ASSERT(strlen(cp) >= 9, "missing flog output: %s\n", cp);
 
@@ -86,7 +108,7 @@ static void test_ctime(void)
 
     /* All of these should be compiled out */
     init_tt();
-    FLOG(STRONG, MIN, "strong min\n");
+    FLOG(STRONG, MINI, "strong min\n");
     FLOG(STRONG, MIN_MAX, "strong min_max\n");
     FLOG(WEAK, NORM, "weak norm\n");
     FLOG(WEAK, SPLIT, "weak split\n");
@@ -168,8 +190,9 @@ static void test_interact(void)
 typedef enum
 {
     CFGB_SM = 1,
-    CFGB_FL = 2,
-    CFGB_FU = 4,
+    CFGB_F = 2,
+    CFGB_L = 4,
+    CFGB_FU = 8,
 } config_bit_t;
 
 static void _test_config(long cfg)
@@ -184,34 +207,36 @@ static void _test_config(long cfg)
     flog_init();
 
     flog_interact_s((bits & CFGB_SM) ? "+sevmod" : "-sevmod", ibuf, sizeof(ibuf));
-    flog_interact_s((bits & CFGB_FL) ? "+fileline" : "-fileline", ibuf, sizeof(ibuf));
+    flog_interact_s((bits & CFGB_F) ? "+file" : "-file", ibuf, sizeof(ibuf));
+    flog_interact_s((bits & CFGB_L) ? "+line" : "-line", ibuf, sizeof(ibuf));
     flog_interact_s((bits & CFGB_FU) ? "+function" : "-function", ibuf, sizeof(ibuf));
 
     init_tt();
-    line = __LINE__; FLOG(MID, MAX, "plain text\n");
+    line = __LINE__; FLOG(MID, MAXI, "plain text\n");
     cp = get_tt();
 
     if (bits & CFGB_SM) {
-        FLOG_ASSERT(strstr(cp, "MAX"), "Missing module %s\n", cp);
+        FLOG_ASSERT(strstr(cp, "MAXI"), "Missing module %s\n", cp);
         FLOG_ASSERT(strstr(cp, "MID"), "Missing severity %s\n", cp);
     } else {
-        FLOG_ASSERT(strstr(cp, "MAX") == NULL, "Unexpected module %s\n", cp);
+        FLOG_ASSERT(strstr(cp, "MAXI") == NULL, "Unexpected module %s\n", cp);
         FLOG_ASSERT(strstr(cp, "MID") == NULL, "Unexpected severity %s\n", cp);
     }
 
     sfn = flog_file_name_shorten(__FILE__);
-    if (bits & CFGB_FL) {
-        char ls[8];
-
+    if (bits & CFGB_F) {
         FLOG_ASSERT(strstr(cp, sfn), "Missing file name %s: %s\n", sfn, cp);
+    } else {
+        FLOG_ASSERT(strstr(cp, sfn) == NULL,
+                "Unexpected file name %s: %s\n", sfn, cp);
+    }
 
+    if (bits & CFGB_L) {
+        char ls[8];
         i = sizeof(ls);
         snprintf(ls, i, "%d", line);
         FLOG_ASSERT(strstr(cp, ls),
                 "Missing line %d (%s): %s\n", line, ls, cp);
-    } else {
-        FLOG_ASSERT(strstr(cp, sfn) == NULL,
-                "Unexpected file name %s: %s\n", sfn, cp);
     }
 
     if (bits & CFGB_FU) {

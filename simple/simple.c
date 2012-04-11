@@ -1,4 +1,18 @@
 
+#define FLOG_FORMAT_LIST \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FUNCTION, "%s") \
+    FLOG_FORMAT_LIST_ITEM(PAREN, "%s") \
+
+#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
+    FLOG_ARGS_LIST_ITEM(SEVMOD, CON, #SEVERITY "[" #MODULE "] ", "") \
+    FLOG_ARGS_LIST_ITEM(FILE, COFF, flog_file_name_shorten(__FILE__), "") \
+    FLOG_ARGS_LIST_ITEM(LINE, COFF, LINETOSTRING(__LINE__), "") \
+    FLOG_ARGS_LIST_ITEM(FUNCTION, COFF, __FUNCTION__, "") \
+    FLOG_ARGS_LIST_ITEM(PAREN, COFF, "() ", "") \
+
 #include "flog_simple.h"
 #include "../flog/flog.c"
 
@@ -8,12 +22,13 @@
 static int parse_args(int argc, char ** argv)
 {
     while (argc-- > 1) {
+        char buf[1024];
+        int r;
+
         ++argv;
-        if (**argv != '-') {
-            char buf[1024];
-            flog_interact_s(*argv, buf, sizeof(buf));
-            FLOG(INFO, LOG, "%s", buf);
-        } else {
+        r = flog_interact_s(*argv, buf, sizeof(buf));
+        FLOG(INFO, LOG, "%s", buf);
+        if (r) {
             printf("%s",
                 "Simple log output\n"
                 "  OPTION   Interact with log options\n"

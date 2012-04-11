@@ -10,11 +10,25 @@
 #define FLOG_PRINTF (*flog_pprintf)
 
 #define FLOG_TIME_SIZE 32
-#define FLOG_TIME(ARG) flog_timestamp(ARG)
-#define FLOG_TIME_DEC char TSSTR[FLOG_TIME_SIZE];
-#define FLOG_TIME_ARG TSSTR
+#define FLOG_FORMAT_DEC char TSSTR[FLOG_TIME_SIZE];
 
-#define FLOG_THREAD()   getpid()
+#define FLOG_FORMAT_LIST \
+    FLOG_FORMAT_LIST_ITEM(TIMESTAMP, "%s") \
+    FLOG_FORMAT_LIST_ITEM(THREADID, "%d ") \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
+    FLOG_FORMAT_LIST_ITEM(FUNCTION, "%s") \
+    FLOG_FORMAT_LIST_ITEM(PAREN, "%s") \
+
+#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
+    FLOG_ARGS_LIST_ITEM(TIMESTAMP, CON, flog_timestamp(TSSTR), "") \
+    FLOG_ARGS_LIST_ITEM(THREADID, ON, getpid(), 0) \
+    FLOG_ARGS_LIST_ITEM(SEVMOD, ON, #SEVERITY "[" #MODULE "] ", "") \
+    FLOG_ARGS_LIST_ITEM(FILE, CON, flog_file_name_shorten(__FILE__), "") \
+    FLOG_ARGS_LIST_ITEM(LINE, CON, LINETOSTRING(__LINE__), "") \
+    FLOG_ARGS_LIST_ITEM(FUNCTION, COFF, __FUNCTION__, "") \
+    FLOG_ARGS_LIST_ITEM(PAREN, COFF, "() ", "") \
 
 #ifdef __cplusplus
 extern "C" {

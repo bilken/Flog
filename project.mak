@@ -21,6 +21,7 @@ UTEST_APP_SOURCES := \
 #   but each sample uses its own unique config.
 
 LOG_CONFIG_PL := $(SPATH)flog/flog_config.pl
+FLOGX_H := $(SPATH)flog/flogx.h
 
 LOG_EXAMPLE_H := $(OPATH)flog_example.h
 LOG_EXAMPLE_CFG_PATH := $(SPATH)example/cfg/
@@ -46,7 +47,7 @@ LOG_TEST_CFG := $(SPATH)test/config.txt
 LOGH := $(LOG_EXAMPLE_H) $(LOG_SIMPLE_H) $(LOG_STATIC_H) $(LOG_TEST_H)
 LOGCFG := $(LOG_EXAMPLE_CFG) $(LOG_SIMPLE_CFG) $(LOG_STATIC_CFG) $(LOG_TEST_CFG)
 
-$(LOGH) : $(LOG_CONFIG_PL)
+$(LOGH) : $(LOG_CONFIG_PL) $(FLOGX_H)
 	$(QUIET)$(ECHO) "Build $@ from $+"; \
     set -e; \
     $(PERL) $+ > $@.tmp; \

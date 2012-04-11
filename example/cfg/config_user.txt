@@ -1,6 +1,1 @@
 
-# Show file/line/function/thread for this user
-+fileline
-+function
-+thread
-

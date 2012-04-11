@@ -6,7 +6,8 @@
     If the X-macro-only method is used, those features are ignored.
 */
 
-/* $sevmodDefs */
+/* $sevDefs */
+/* $modDefs */
 
 #if !defined(FLOG_SEVERITY_LIST) || !defined(FLOG_MODULE_LIST)
 #error "Missing FLOG_SEVERITIES/FLOG_MODULES defintion"
@@ -127,6 +128,9 @@ extern const char *flog_file_name_shorten(const char *fn);
 #define FLOG_FORMAT_DEC
 #endif
 
+#define LINE2STR(X) #X
+#define LINETOSTRING(X) "[" LINE2STR(X) "] "
+
 #define FLOG_VA_NONE 0
 #define FLOG_VA_GCC  1
 #define FLOG_VA_C99  2
@@ -174,7 +178,7 @@ extern const char *flog_file_name_shorten(const char *fn);
 #ifdef FLOGX
 #define FLOG(SEVERITY, MODULE, FMT, ARGS...) _FLOG_CHKDO(SEVERITY, MODULE, FMT , ##ARGS)
 #else
-#define FLOG(SEVERITY, MODULE, FMT, ARGS...) FLOGS_##SEVERITY##_##MODULE(FMT , ##ARGS)
+#define FLOG(SEVERITY, MODULE, FMT, ARGS...) FLOG_##SEVERITY##_##MODULE(FMT , ##ARGS)
 #endif
 #define _FLOG_DO(SEVERITY, MODULE, FMT, ARGS...) \
     FLOG_FORMAT_DEC FLOG_PRINTF(FLOG_FORMAT_LIST FMT FLOG_ARGS_LIST(SEVERITY, MODULE) , ##ARGS)
@@ -207,7 +211,7 @@ extern const char *flog_file_name_shorten(const char *fn);
 /* $c99Defs */
 #endif /* FLOG_VA_TYPE == C99 */
 
-/* $flogsDefs */
+/* $strDefs */
 /* $testDefs */
 
 #endif  /* __FLOGX_H__ */

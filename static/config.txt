@@ -8,10 +8,3 @@ AB INFO
 CDEF INFO
 XYZ INFO
 
-# Define format
---timestamp
---thread
-++sevmod
---fileline
---function
-
