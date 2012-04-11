@@ -301,11 +301,6 @@ extern const char *flog_file_name_shorten(const char *fn);
 #define FLOG_PRINTF printf
 #endif
 
-#ifndef FLOG_VSNPRINTF
-#include <stdio.h>
-#define FLOG_VSNPRINTF vsnprintf
-#endif
-
 #ifndef FLOG_TIME
 #define FLOG_TIME
 #undef FLOG_TIME_DEC

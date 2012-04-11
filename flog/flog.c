@@ -3,6 +3,11 @@
 #error "FLOG_MODULE_LIST not defined! FLOG header may not be included."
 #endif
 
+#ifndef FLOG_VSNPRINTF
+#include <stdio.h>
+#define FLOG_VSNPRINTF vsnprintf
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -289,6 +294,11 @@ static void _print_configs(psn_t * p)
 
     flog_psnprintf(p, "Configurations: '+|- CFG'\n");
     for (i = 0; i < ARRAY_COUNT(flog_cfg); i++) {
+#ifdef FLOGX
+        if (flog_cfg[i].bit & FLOG_FLAGS_NONCONFIG) {
+            continue;
+        }
+#endif
         flog_psnprintf(p, " %c%s,",
                 (flog_flags & flog_cfg[i].bit) ? '+' : '-',
                 flog_cfg[i].name);
@@ -312,6 +322,11 @@ static int _log_config(char *cp, size_t len, const char *arg)
 
     _parse_string(cp, len, &arg);
     for (i = 0; i < ARRAY_COUNT(flog_cfg); i++) {
+#ifdef FLOGX
+        if (flog_cfg[i].bit & FLOG_FLAGS_NONCONFIG) {
+            continue;
+        }
+#endif
         if (_str_nccmp(cp, flog_cfg[i].name) == 0) {
             if (enable) {
                 flog_flags |= flog_cfg[i].bit;

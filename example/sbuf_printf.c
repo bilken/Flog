@@ -51,7 +51,7 @@ int flog_sbuf_printf(const char *fmt, ...)
     }
 
     va_start(arg, fmt);
-    i = FLOG_VSNPRINTF(sbuf_tail->data + sbuf_tail->offset, SBUF_RESERVE,
+    i = vsnprintf(sbuf_tail->data + sbuf_tail->offset, SBUF_RESERVE,
             fmt, arg);
     va_end(arg);
 

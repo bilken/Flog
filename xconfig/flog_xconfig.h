@@ -15,6 +15,7 @@
 #define LINE2STR(X) #X
 #define LINETOSTRING(X) "[" LINE2STR(X) "] "
 
+#if 0
 #define FLOG_FORMAT_LIST \
     FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
     FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
@@ -23,11 +24,13 @@
     FLOG_FORMAT_LIST_ITEM(PAREN, "%s") \
 
 #define FLOG_ARGS_LIST(SEVERITY, MODULE) \
-    FLOG_ARGS_LIST_ITEM(SEVMOD, #SEVERITY "[" #MODULE "] ", "") \
-    FLOG_ARGS_LIST_ITEM(FILE, flog_file_name_shorten(__FILE__), "") \
-    FLOG_ARGS_LIST_ITEM(LINE, LINETOSTRING(__LINE__), "") \
-    FLOG_ARGS_LIST_ITEM(FUNCTION, __FUNCTION__, "") \
-    FLOG_ARGS_LIST_ITEM(PAREN, "() ", "") \
+    FLOG_ARGS_LIST_ITEM(SEVMOD, ON, #SEVERITY "[" #MODULE "] ", "") \
+    FLOG_ARGS_LIST_ITEM(FILE, CON, flog_file_name_shorten(__FILE__), "") \
+    FLOG_ARGS_LIST_ITEM(LINE, CON, LINETOSTRING(__LINE__), "") \
+    FLOG_ARGS_LIST_ITEM(FUNCTION, COFF, __FUNCTION__, "") \
+    FLOG_ARGS_LIST_ITEM(PAREN, COFF, "() ", "") \
+
+#endif
 
 #define FLOGX
 #include "../flog/flogx.h"

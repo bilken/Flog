@@ -1,29 +1,21 @@
 #ifndef __FLOGX_H__
 #define __FLOGX_H__
 
+/*
+    The dollar elements are placeholders for auto-generated content.
+    If the X-macro-only method is used, those features are ignored.
+*/
 
-#if 0
-#define FLOG_SEVERITY_LIST \
-    FLOG_SEVERITY_LIST_ITEM(DEBUG) \
-    FLOG_SEVERITY_LIST_ITEM(INFO) \
-    FLOG_SEVERITY_LIST_ITEM(ERROR) \
+/* $sevmodDefs */
 
-#define FLOG_MODULE_LIST \
-    FLOG_MODULE_LIST_ITEM( AB, DEBUG, INFO ) \
-    FLOG_MODULE_LIST_ITEM( CDEF, DEBUG, INFO ) \
-
-#define FLOG_FORMAT_LIST \
-    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
-
-#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
-    FLOG_ARGS_LIST_ITEM(SEVMOD, #SEVERITY "[" #MODULE "] ", "") \
-    FLOG_ARGS_LIST_ITEM(FILE, flog_file_name_shorten(__FILE__), "") \
-
-#else
-#if !defined(FLOG_SEVERITY_LIST) || !defined(FLOG_MODULE_LIST) || !defined(FLOG_FORMAT_LIST)
-#error "Missing FLOG_SEVERITIES/FLOG_MODULES/FLOG_FORMAT defintion"
+#if !defined(FLOG_SEVERITY_LIST) || !defined(FLOG_MODULE_LIST)
+#error "Missing FLOG_SEVERITIES/FLOG_MODULES defintion"
 #endif
+#ifndef FLOG_FORMAT_LIST
+#define FLOG_FORMAT_LIST
+#endif
+#ifndef FLOG_ARGS_LIST
+#define FLOG_ARGS_LIST(NA1,NA2)
 #endif
 
 enum {
@@ -44,7 +36,7 @@ enum {
 #define FLOG_MODULE_LIST_ITEM(MOD, MAX, DEF) FLOG_MOD_##MOD,
     FLOG_MODULE_LIST
 #undef FLOG_MODULE_LIST_ITEM
-    FLOG_MOD_NUM_ELEMENTS = 4,
+    FLOG_MOD_NUM_ELEMENTS,
     FLOG_MOD_ALL = FLOG_MOD_NUM_ELEMENTS,
 };
 
@@ -58,14 +50,38 @@ enum {
 #define FLOG_FORMAT_LIST_ITEM(NAME, FMT) FLOG_FLAG_##NAME = 1 << FLOG_FLAGBIT_##NAME,
     FLOG_FORMAT_LIST
 #undef FLOG_FORMAT_LIST_ITEM
+
+    FLOG_FLAGS_NONCONFIG = 0
+#define FLOG_ARG_ON(NAME, ARG, DISARG) | FLOG_FLAG_##NAME
+#define FLOG_ARG_CON(NAME, ARG, DISARG)
+#define FLOG_ARG_COFF(NAME, ARG, DISARG)
+#define FLOG_ARGS_LIST_ITEM(NAME, FLG, ARG, DISARG) FLOG_ARG_##FLG(NAME, ARG, DISARG)
+        FLOG_ARGS_LIST(na, na),
+#undef FLOG_ARG_ON
+#undef FLOG_ARG_CON
+#undef FLOG_ARG_COFF
+#undef FLOG_ARGS_LIST_ITEM
+
+    FLOG_FLAGS_DEFAULT = 0
+#define FLOG_ARG_ON(NAME, ARG, DISARG)
+#define FLOG_ARG_CON(NAME, ARG, DISARG) | FLOG_FLAG_##NAME
+#define FLOG_ARG_COFF(NAME, ARG, DISARG)
+#define FLOG_ARGS_LIST_ITEM(NAME, FLG, ARG, DISARG) FLOG_ARG_##FLG(NAME, ARG, DISARG)
+        FLOG_ARGS_LIST(na, na),
+#undef FLOG_ARG_ON
+#undef FLOG_ARG_CON
+#undef FLOG_ARG_COFF
+#undef FLOG_ARGS_LIST_ITEM
 };
+
+#define FLOG_FLAG(FF) (flog_flags & FLOG_FLAG_##FF)
 
 #define FLOG_FORMAT_LIST_ITEM(NAME, FMT) FMT
 
-#define FLOG_ARGS_LIST_ITEM(NAME, ARG, DISARG) , FLOG_FLAG(NAME) ? ARG : DISARG
-
-#define FLOG_FLAG(FF) (flog_flags & FLOG_FLAG_##FF)
-#define FLOG_FLAGS_DEFAULT (0x7f)
+#define FLOG_ARG_CON(NAME, ARG, DISARG) FLOG_FLAG(NAME) ? ARG : DISARG
+#define FLOG_ARG_COFF(NAME, ARG, DISARG) FLOG_FLAG(NAME) ? ARG : DISARG
+#define FLOG_ARG_ON(NAME, ARG, DISARG) ARG
+#define FLOG_ARGS_LIST_ITEM(NAME, FLG, ARG, DISARG) , FLOG_ARG_##FLG(NAME, ARG, DISARG)
 
 #ifdef __cplusplus
 #include <sstream>
@@ -105,11 +121,6 @@ extern const char *flog_file_name_shorten(const char *fn);
 #ifndef FLOG_PRINTF
 #include <stdio.h>
 #define FLOG_PRINTF printf
-#endif
-
-#ifndef FLOG_VSNPRINTF
-#include <stdio.h>
-#define FLOG_VSNPRINTF vsnprintf
 #endif
 
 #ifndef FLOG_FORMAT_DEC
@@ -160,7 +171,11 @@ extern const char *flog_file_name_shorten(const char *fn);
 #endif
 
 #if FLOG_VA_TYPE == FLOG_VA_GCC
+#ifdef FLOGX
 #define FLOG(SEVERITY, MODULE, FMT, ARGS...) _FLOG_CHKDO(SEVERITY, MODULE, FMT , ##ARGS)
+#else
+#define FLOG(SEVERITY, MODULE, FMT, ARGS...) FLOGS_##SEVERITY##_##MODULE(FMT , ##ARGS)
+#endif
 #define _FLOG_DO(SEVERITY, MODULE, FMT, ARGS...) \
     FLOG_FORMAT_DEC FLOG_PRINTF(FLOG_FORMAT_LIST FMT FLOG_ARGS_LIST(SEVERITY, MODULE) , ##ARGS)
 #define _FLOG_CHKDO(SEVERITY, MODULE, FMT, ARGS...) \
@@ -170,11 +185,16 @@ extern const char *flog_file_name_shorten(const char *fn);
         std::ostringstream _mSSTR; _mSSTR << SSTR; \
         _FLOG_DO(SEVERITY, MODULE, "%s", _mSSTR.str().c_str()); \
     } } while (0)
+/* $gccDefs */
 #endif /* FLOG_VA_TYPE == GCC */
 
 #if FLOG_VA_TYPE == FLOG_VA_C99
 /* Note, the extra "" arg lets fmt-only FLOG() calls work */
+#ifndef FLOGX
 #define FLOG(SEVERITY, MODULE, ...) _FLOG_CHKDO(SEVERITY, MODULE, __VA_ARGS__, "")
+#else
+#define FLOG(SEVERITY, MODULE, ...) FLOGS_##SEVERITY##_##MODULE(__VA_ARGS__)
+#endif
 #define _FLOG_DO(SEVERITY, MODULE, FMT, ...) \
     FLOG_FORMAT_DEC; FLOG_PRINTF(FLOG_FORMAT_LIST FMT "%s" FLOG_ARGS_LIST(SEVERITY, MODULE), __VA_ARGS__)
 #define _FLOG_CHKDO(SEVERITY, MODULE, FMT, ...) \
@@ -184,7 +204,11 @@ extern const char *flog_file_name_shorten(const char *fn);
         std::ostringstream _mSSTR; _mSSTR << SSTR; \
         _FLOG_DO(SEVERITY, MODULE, "%s", _mSSTR.str().c_str(), ""); \
     } } while (0)
+/* $c99Defs */
 #endif /* FLOG_VA_TYPE == C99 */
+
+/* $flogsDefs */
+/* $testDefs */
 
 #endif  /* __FLOGX_H__ */
 
