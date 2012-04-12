@@ -3,197 +3,318 @@ Flog logging
 
     Flog is a logging library of sorts with the following features:
         * Generates uniform logging output with compile-time and run-time
-        configurability
+            configurability
         * Supports both printf-style (for C projects) and ostream-style
         * Supports distinct severity levels for each log module
+        * Supports configurable line formatting
         * Public domain license
+
+    Written by Billy Kennemer <eyepits@gmail.com>. Reimplemented based
+    on work done at Flashlight Engineering and Consulting (http://flec.tv).
+
+
+Usage
+
+    Printf-style logging:
+        FLOG(SEVERITY, MODULE, FMT, ...);
+
+    C++ ostream-style logging (with C++ compilers only):
+        FLOGS(SEVERITY, MODULE, "Value: (" << val << ")" << std::endl);
+
+    Log calls will be inhibited at compile-time when the maximum SEVERITY
+    for the MODULE is less severe than the FLOG/FLOGS call's SEVERITY.
+
+    At run-time, if dynamic configuration is enabled, log calls will be
+    inhibited when the current assigned SEVERITY for the MODULE is less
+    severe than the FLOG/FLOGS call's SEVERITY.
+
+
+    General conditionals:
+        // Compile-time test with scripted configurations
+        #if[def] FLOG_TEST_SEVERITY_MODULE
+            ...
+        #endif
+
+        // Compile-time test with unscripted configurations
+        // Run-time test when FLOG_STATIC is not defined
+        IF_FLOG_SET(SEVERITY, MODULE) {
+            ...
+        }
+
+    Dynamic configuration of MODULE SEVERITies and format options:
+        // When FLOG_STATIC is not defined
+        int flog_interact_s(const char *arg, char *outStr, size_t outStrLen)
+            Show settings:    flog_interact("");
+            Get a log level:  flog_interact("MODULE");
+            Set a log level:  flog_interact("MODULE SEVERITY");
+            Adjust format:    flog_interact("(+|-) <format name>");
 
 
 Samples
 
-    There are three sample programs that show different ways to use Flog
+    There are four sample programs that show different ways to use Flog
     logging:
 
     1 static/static.cpp
 
         This sample program uses only compile-time log definitions. That
         is, the run-time log configurations and checks are inhibited.
+
         Log invocations with inhibited severity-module pairs are removed
         by the preprocessor.
 
-        Static/default log definitions:
-            static/config.txt
-            static/flog.h
+        Format options are only configured at compile-time.
+
+        Modules and severities are defined via script, in static/config.txt.
 
     2 simple/simple.c
 
         This sample program uses both run-time and compile-time log
         definitions. It is a C-only program, skipping C++ elements.
-        Pass dynamic log settings on the command line.
 
-        Static/default log definitions:
-            simple/config.txt
-            simple/flog.h
+        Logging may be dynamically configured through command line
+        parameters, e.g. "all:error" to set all module levels to
+        a maximum severity of ERROR.
+
+        Modules and severities are defined via script, in simple/config.txt.
 
     3 example/example.cpp
 
         This sample program uses both run-time and compile-time log
         definitions. It further includes several features the other
-        examples omit:
-            timestamp
-            thread id
+        samples omit:
+            fancy formatting: timestamp, thread id
             file/buffer output
             varying configurations for debug and release
 
-        Static/default log definitions:
+        Modules and severities are defined via several scripts:
             example/cfg/*.txt
             example/flog.h
+
+    4 xconfig/xconfig.cpp
+
+        This sample program uses both run-time and compile-time log
+        definitions, but does using only X-macro declarations. That
+        is, the configuration does not include the perl_config.pl
+        script; it is configured entirely in the code.
+
+        Modules, severities and formatting are defined in
+        xconfig/flog_xconfig.h.
+
 
     To build all samples and the test, execute 'make all'. The host
     and target platform are assumed to be unix-y (e.g. Linux or cygwin).
     GNU make, g++ (or clang++) and Perl must be installed. The code isn't
     too fancy so most non-archaic versions should "just work".
 
-    Execute the samples (in debug builds) as:
+    Execute the samples and test (in debug builds) as:
         o/d/static/static
         o/d/simple/simple
         o/d/example/example
+        o/d/xconfig/xconfig
+        o/d/test/test_flog
 
 
-Installation and Configuration
+Installation
 
-    1 Define severities and modules in a config file
+    Make the contents of flog/* accessible to your project.
 
-        For example, use one of the following samples as a guide:
-            - example/cfg/*.txt
-            - simple/config.txt
-            - static/config.txt
+    In the minimal case (unscripted and static logging), only flogx.h is
+    needed. In the maximal case (scripted and dynamic logging), the
+    flog_config.pl script and flog.c are also needed.
 
-    2 Generate the flog header from the configuration:
 
-        `[perl] flog/flog_config.pl $configFiles > $flogHeader`
+Configuration
 
-        Note, perl must be installed on the target system. No
-        extra perl modules should be needed.
+    Flog has two methods of configuration with trade-offs to each:
+        1) Unscripted
+        2) Scripted
 
-        Note, this must be re-executed each time the config file(s)
-        are changed. That is, whenever the compile-time settings for
-        severities, modules or format options are changed, the
-        flog inner header must be regenerated.
+    In the unscripted case, a user defines the Flog configuration entirely
+    in a header file including all severities, modules and format options.
+    The unscripted option is easier to setup. The compile-time feature
+    may not work properly with all compilers (though it's fine with gcc/clang).
 
-        The sample project makefiles execute this automatically
-        for each sample $flogHeader. See project.mak for details.
+    The scripted option adds some extra features to Flog:
+        * Modules and severities are defined in a separate configuration file
+        * Compile-time inhibited FLOG calls are removed by the preprocessor.
+        * FLOG_SEV_MOD(...) APIs are generated if the user prefers that form
+        * FLOG_TEST_SEV_MOD macros are declared for conditional compilation
 
-        The format is simple but quirky and not well-defined.
 
-    3 Configure Flog output
+    Unscripted Configuration
 
-        The $flogHeader from step 2 is functional with the following
-        caveats:
-        a) Log calls output to stdout with 'printf'
-        b) Timestamp and thread id elements are not supported
+        If choosing an unscripted configuration, first create the project's
+        $flogHeader file (most any relevant name is suitable):
+        
+            An example:
+                xconfig/flog_xconfig.h
+
+            Define severities, modules and format options using the following
+            X-Macro declarations:
+                FLOG_SEVERITY_LIST
+                FLOG_MODULE_LIST
+
+            Define 'FLOGX' to configure unscripted mode.
+
+            Include the 'flogx.h' header to define FLOG() and FLOGS() APIs
+
+        Then, skip to the 'Common Configuration' section
+
+
+    Scripted Configuration
+
+        If using a scripted configuration, define severities and modules in
+        one or more $configFiles:
+
+            For example, use one of the following samples as a guide:
+                example/cfg/*.txt
+                simple/config.txt
+                static/config.txt
+
+            The configuration file format is simple but quirky and not
+            well-defined. The examples above ought to be sufficient.
+
+        Generate the $flogHeader file from the configuration:
+
+            `[perl] flog/flog_config.pl flog/flogx.h $configFiles > $flogHeader`
+
+            Note, perl must be installed on the target system. No extra perl
+            modules should be needed.
+
+            Note, this must be re-executed each time the config file(s) are
+            changed. That is, whenever the compile-time settings for
+            severities or modules are changed, the $flogHeader must be
+            regenerated.
+
+            The sample project makefiles execute this automatically for each
+            sample $flogHeader. See project.mak for details. Your project can
+            generate the $flogHeader as it sees fit.
+
+
+    Common Configuration
+
+        The $flogHeader, as generated by either the scripted or unscripted
+        configuration method, is functional with the following caveats:
+        a) Log calls use stdout with 'printf'
+        b) No log formatting is defined
         c) Dynamic configuration elements are included
 
-        If these caveats are okay, your project may include the
-        $flogHeader directly wherever logging is needed and you may
-        proceed to step 4.
+        If these caveats are okay, your project may include the $flogHeader
+        directly wherever logging is needed and you may proceed to the 
+        'Dynamic Configuration' section.
 
-        Otherwise, one or more of the following macros should be defined
-        whenever the $flogHeader is included. You may wish to define a
-        new header, such as example/flog.h, with the expected definitions
-        and then include $flogHeader from there. Configurable macros:
-            FLOG_STATIC     Define to disable dynamic configuration
-            FLOG_PRINTF     The printf-like function Flog uses for output
-            FLOG_TIME(ARG)  Return the time, optionally using 'ARG'
-            FLOG_TIME_DEC   The declaration of the ARG for FLOG_TIME()
-            FLOG_TIME_ARG   The ARG value as a parameter, not a declaration.
-            FLOG_THREAD()   The routine to return a thread id (an int)
 
-        Theoretically, things like FLOG_PRINTF could be defined
-        differently in different source files. That's probably not the
-        best idea, though. Logging usually needs to be consistent.
+        Optional configurations may be defined when including the $flogHeader.
+        The sample programs show the effects these configurations. Typically,
+        a common header file will include the necessary definitions from
+        below and then include the $flogHeader. All code using Flog would
+        then include this encapsulating header.
 
-    4 Dynamic configuration
+        Output destination
+
+            The output destination defaults to stdout. To change this, define
+            the FLOG_PRINTF macro as needed. It should be a function that
+            has the same signature as printf(), i.e.:
+                int FLOG_PRINTF(const char * fmt, ...);
+
+            See example/flog.h for one example.
+
+        Formatting
+
+            Logging generally includes some project specific content with
+            each log output. These elements can be defined in two X-Macros:
+                FLOG_FORMAT_LIST \
+                    FLOG_FORMAT_LIST_ITEM(NAME, FMT) \
+                FLOG_ARGS_LIST(SEVERITY, MODULE)
+                    FLOG_ARGS_LIST_ITEM(NAME, CFG, VALUE, NONVALUE) \
+
+            The formatting is split into two partly redundant lists due to
+            the way the C preprocess works.
+
+            If both are left undefined, no formatting is added to each
+            FLOG/FLOGS call.
+
+            Each FLOG_FORMAT_LIST_ITEM element has the following parameters:
+                1) The name to be used in dynamic configuration
+                2) The printf-style format specifier. E.g. "%s".
+                    Note, this must be a string literal so that it can be
+                    concatenated with other format specifies and the FLOG()
+                    format specifier.
+
+            Each FLOG_ARGS_LIST_ITEM element has the following paremeters:
+                1) The name. This must match the FLOG_FORMAT_LIST_ITEM name.
+                2) The configuration specifier, one of the following:
+                    ON   - The element is always present in log output
+                    CON  - The element is configurable, on by default
+                    COFF - The element is configurable, off by default
+                3) The value. This is the argument matching the format specifier
+                    as defined in the corresponding FLOG_FORMAT_LIST_ITEM.
+                    Note that the SEVERITY and MODULE names are available here
+                    if needed.
+                4) The inhibited value. If the item is configurable at run-time,
+                    this is the value to pass in place of the real value.
+
+            The order of these lists matters. It defines the order in which they
+            appear on each log line. Note that Flog will always place the format
+            elements ahead of the user's text on each line. The user is
+            responsible for spacing of the elements either in the format
+            specifiers or in the values.
+
+            Lastly, some arguments may require stack space of some sort to do
+            their work. In such cases, define all needed local variables --
+            using unique names that won't clash with other local symbols --
+            with the FLOG_FORMAT_DEC macro. For example:
+                #define FLOG_FORMAT_DEC  some_struct_t myFormatParam;
+            That variable will be available to each FLOG_ARGS_LIST_ITEM.
+
+            See example/flog.h for a full example.
+            See simple/simple.c for a minimal example.
+
+        Disable run-time configuration
+
+            To disable run-time configurations -- if only compile-time
+            configurations are desired -- define FLOG_STATIC.
+
+            When used, FLOG_ARGS_LIST_ITEMs must only use the 'ON' configuration.
+
+            See static/static.cpp for an example.
+
+    Dynamic configuration
 
         If FLOG_STATIC is not defined, two extra steps are required:
-        a) At the start of main (before using logging), set the
-            default log levels by calling flog_init().
-        b) In one of your source files, include flog/flog.c after
-            including the $flogHeader.
+        a) At the start of main (before using logging), set the default log
+            levels by calling flog_init().
+        b) In one of your source files, include flog/flog.c after including
+            $flogHeader.
 
-        Lastly, invoke flog_interact_s() as needed to adjust Flog
-        dynamic configurations.
+        Lastly, invoke flog_interact_s() as needed to adjust Flog dynamic
+        configurations.
 
+        See the samples for usage:
+            simple/simple.c
+            example/example.cpp
+            xconfig/xconfig.cpp
 
-Usage
+Caveats
 
-    Printf-style logging:
-        FLOG(<SEVERITY>, <MODULE>, <FMT>, ...);
-        FLOG_<SEVERITY>_<MODULE>(<FMT>, ...);
+    1) Flog won't work with compilers that lack variadic macros.
+        To fix this, there are two options I see:
+        a) Use only FLOGS() and FLOGSTRING() as these have fixed parameters.
+            Write a new section in flog/flogx.h to flesh these out for the
+            FLOG_VA_NONE case.
+        b) Finish the flog/flog_api_convert.pl script so that it converts
+            all FLOG() AND FLOGS() calls to to DP_FLOG_SEV_MOD(()) and
+            DP_FLOGS_SEV_MOD(()) calls. Add /* $dpDefs */ to the FLOG_VA_NONE
+            section of flog/flogx.h.
 
-    C++ ostream-style logging (with C++ compilers only):
-        FLOGS(<SEVERITY>, <MODULE>, "Values: (" << item1 << ", " << item2 << ")" << std::endl);
-        FLOGS_<SEVERITY>_<MODULE>("Values: (" << item1 << ", " << item2 << ")" << std::endl);
+    2) The FMT string for FLOG() calls must be a string literal if any
+        formatting is used. The format feature relies on string concatenation.
 
-    Compile-time severity test:
-        #if[def] FLOG_TEST_<SEVERITY>_<MODULE>
-        ...
-        #endif
+    3) The FLOG_FORMAT_LIST_ITEM(NAME, FMT) FMT value must be a string
+        literal. Same reason as '2)' above.
 
-    Dynamic configuration of log levels and formatting:
-        int flog_interact(const char *arg);
-            Show all modules: flog_interact("");
-            Get a log level:  flog_interact("<module>");
-            Set a log level:  flog_interact("<module> <severity>");
-            Adjust format:    flog_interact("(+|-) <option>");
-
-    At compile-time, each module has a maximum value defined.
-    All log calls with that module and a lower severity are
-    removed from compilation.
-    
-
-
-Issues and trade-offs
-
-    * Each module has a maximum severity defined at compile-time. Unused
-        module/severity pairs are compiled-out, so there is zero run-time
-        performance.
-    * Each module has a configurable run-time severity. The severity is
-        checked before executing any logging code for each call. The
-        severity check is the only thing executed in a log statement when
-        the severity is inhibited.
-    * The format options -- timestamp, mod/sev, file/line and function --
-        are all configurable at compile-time and/or run-time. The thread
-        id is configurable only at compile time.
-    * __FILE__ strings are left intact so the compiler can produce only
-        one copy per file (if it's sufficiently clever).
-    * The format parameters to each FLOG* call are specified seperately,
-        so code size is bloated a bit instead. For example, there'd be
-        less code size if the module/severity, timestamp, thread id were
-        all generated from within a function instead of being
-        instantiated anew for invocation of FLOG.
-    * flog_config.pl must be run before compilation, when changing
-        compile-time maximums/defaults or changing modules. Changes to
-        any module force recompilation of all files using logging. And
-        either the build system or the user must ensure that the flog
-        header and flog.c are rebuilt.
-    * The configuration file format doesn't follow any conventions, but
-        it's not too complicated.
-    * Installation is not ideal because of the header generation
-        dependency. The user defines the name of the flog header (and
-        may generate another header to encapsulate that header), but the
-        flog.c source file depends on that header during build. It is not
-        possible to use it simply as a library. So the user has to do
-        weird stuff to integrate flog into their project.
-    * Run-time configuration checks (like the timestamp) hurt performance
-        when the module's severity is permitted. Of course, run-time
-        configurability can be disabled (that is, each configuration item
-        can be configured only at compile-time).
-    * The compiler errors produced for invalid modules and severities are
-        a little confusing since they will report a faulty symbol,
-        'FLOG_SEV_MOD', where 'MOD' and 'SEV' are whatever is in the FLOG
-        call. The error line number will be accurate, so it's workable.
-    * The conditional before each log call encodes the module and
-        severity into a single value to reduce code size and the cost of
-        the function call.
+    4) Format specifies like %1$d aren't supported with FLOG() since the
+        format values affect the numbering in obscure ways. However, if
+        using C++, things like boost::format will work with FLOGS().
 

@@ -31,7 +31,7 @@
     really terrible.
 </p>
 <p>
-    It was clear what was <b>wrong</b> with the existing logging code:
+    It was clear what was wrong with the existing logging code:
     <ul>
         <li>It was incosistent. Different modules used different logging
             APIs (I guess depending on who wrote it or when). Different
@@ -68,7 +68,7 @@
     Meanwhile, another group at our office was working in parallel on
     porting the system to yet another platform. Like my group, they were
     not permitted to rewrite the icky portions. But they could write their
-    brand new platform code <b><em>right</em></b>. They wrote a logging API
+    brand new platform code right. They wrote a logging API
     that included compile-time configuration of severities on a per-module
     basis. I thought it was pretty good. I thought it could be better.
 </p>
@@ -132,6 +132,15 @@
     </pre>
 </p>
 
+<h3>"Why is the severity in the macro name but the module is a parameter?"</h3>
+<p>
+    Yeah, that's weird. So I made it so that both of the following are valid:
+    <pre>
+    FLOG(FOOSEV, BARMOD, "fmt %d\n", num);
+    FLOG_FOOSEV_BARMOD("fmt %d\n", num);
+    </pre>
+</p>
+
 <h3>"How do I reduce the run-time cost of inhibited log statements
     to zero?"</h3>
 <p>
@@ -146,62 +155,31 @@
 <h3>"How do I define modules and severities?"</h3>
 <h3>"How do I define macros for each module and severity?"</h3>
 <p>
-    These questions were tricky and are the source of one of the grossest
-    parts of the implementation. I decided that it'd be easiest to define
+    These questions are tricky and are the source of conflict within
+    Flog. At first, I decided that it'd be easiest to define
     the severities and modules in a seperate configuration file. I chose
     to write a Perl script, flog_config.pl, to parse the configuration and
-    generate a header with all the necessary declarations.
+    generate a header with all the necessary declarations. Each
+    FLOG_SEVERITY_MODULE() that should be inhibited would be defined
+    to nothing. Each uninhibited call would have a valid definition.
 </p>
 <p>
-    However, I could solve these issues with X-macros. Something like this:
+    However, I could also solve these issues with X-macros with one
+    limitation: the compile-time setting would have to be
+    handled by the compiler, e.g.:
     <pre>
-    /* Available severities */
-    #define FLOG_SEVERITIES \
-        FLOG_SVR(DEBUG) \
-        FLOG_SVR(INFO) \
-        FLOG_SVR(ERROR) \
-
-    /* Module name, compile-time maximum, run-time default */
-    #define FLOG_MODULES \
-        FLOG_MOD(FOO, DEBUG, INFO) \
-        FLOG_MOD(BAR, INFO, ERROR) \
-
-    ...
-
-    enum flog_svr {
-        FLOG_SVR_INVALID = -1,
-    #define FLOG_SVR(SVR) FLOG_SVR_##MOD,
-        FLOG_MODULES
-    #undef FLOG_SVR
-        FLOG_SVR_NONE,
-    };
-        
-    enum flog_mod_max {
-    #define FLOG_MOD(MOD, MAX, DEF) FLOG_MOD_MAX_##MOD = FLOG_SVR_##MAX,
-        FLOG_MODULES
-    #undef FLOG_MOD
-    };
-
-    #define FLOG(SEV, MOD, FMT, ARGS...) \
-        if (FLOG_SVR_##SEV &gt;&eq; FLOG_MOD_MAX_##MOD)) { \
-            _FLOG_DO(SEV, MOD, FMT , ##ARGS ); \
-        }
+    'if (3 &lt; 2)'
     </pre>
-    However, the X-macro approach will depend on the compiler to optimize
-    out a constant condition, such as:
-    <pre>
-    if (3 &lt; 2) { ... }
-    </pre>
-    I'd already decided not to do that.
+    Maybe that's not true, but I couldn't think of a way to generically
+    trick the preprocessor into stubbing out inhibited module/severity pairs.
+    I could do it if severity was global, but not with per-module
+    severities.
 </p>
-
-<h3>"Why is the severity in the macro name but the module is a parameter?"</h3>
 <p>
-    Yeah, that's weird. So I made it so that both of the following are valid:
-    <pre>
-    FLOG(FOOSEV, BARMOD, "fmt %d\n", num);
-    FLOG_FOOSEV_BARMOD("fmt %d\n", num);
-    </pre>
+    So, Flog supports two methods of configuration. One relies on
+    the perl script but generates solid compile-time configuration.
+    The other doesn't need the perl script but relies on the
+    compiler to optimize away dead code.
 </p>
 
 <h3>"Are variadic macros universally supported?"</h3>
@@ -221,9 +199,10 @@
     supported. My original implementation was going to have compile-time
     configuration but no run-time configuration in such cases. An extra
     preprocessing tool would be run on each source file to convert all
-    FLOG(FOOSEV, BARMOD, ...) calls to DP_FLOG_FOOSEV_BARMOD(...) which
-    could then be defined to nothing to inhibit the call or to the output
-    routine if not. The extra script was kludgy, so I dropped it.
+    FLOG(FOOSEV, BARMOD, ...) calls to DP_FLOG_FOOSEV_BARMOD((...)) which
+    could then be defined to nothing through the double parenthese trick
+    (hence the 'DP'). This seemed pretty kludgy, especially the script
+    I wrote, so I dropped it.
 </p>
 
 <h3>"How do I do run-time configuration?"</h3>
@@ -278,6 +257,8 @@
 <p>
     Note that since C++ output is a single expression, variadic macro
     support isn't required. I suddenly like printf-style syntax less...
+    I still haven't bothered to support non-variadic compilers yet,
+    though. I probably will eventually 'cause I like finishing things.
 </p>
 
 <h3>"What about format items, like time stamp, svr/mod, file/line, thread id?"</h3>
@@ -292,36 +273,58 @@
     </pre>
 </p>
 <p>
-    Note, the timestamp output probably requires storage. I let the user
-    declare the following macros to instantiate and pass the required storage:
+    I originally intended the file/line elements to be a single entity.
+    I found that concatinating the name with the line (when converted to
+    a string) caused some compilers to store a ton of duplicate data.
+    For example: myfile.cpp[123] and myfile.cpp[125]. That is, the file
+    name was being represented once for every single log call. In some
+    source files, this was significant. I also found that some compilers
+    generate full-path file names which not only made the magnitude of the
+    duplication ridiculous but made the formatting ugly.
+    So, I wrote a function to seek past the last '/' (or '\\') character in
+    the file name string. It solved both of those problems. The cost was
+    that the file/line format now has two arguments. Performance-wise,
+    I figured the boost from not outputting the full path outweighed the
+    cost of finding the base name and passing an extra parameter. So it's
+    mostly a win.
+</p>
+<p>
+    Originally, the format generation was baked into the configuration script.
+    It bothered me that a perl script had to know about the timestamp and
+    thread id functions, but I wasn't sure how else to do it. Then, when I
+    decided to create the X-Macro only configuration, I realized that the
+    format stuff needed to be done using X-Macros instead. This presented
+    a series of trade-offs:
+    <ul>
+        <li>Pro: the perl script no longer needed to know about the
+            timestamp or thread id functions (or formatting at all).</li>
+        <li>Pro: the user could define whatever they wanted as their
+            format, in any order.</li>
+        <li>Con: the run-time configuration is on a per item basis, so
+            things like file/line are seperately configured.</li>
+        <li>Con: there are two partly redundant X-Macros for formatting.
+            This happens because there are two parts to each format item,
+            the format specified (e.g. "%s") and the value. Though I'm
+            investigating if I merge these two macros now.</li>
+    </ul>
+</p>
+<p>
+    One other thing. Things like a timestamp may require local storage to
+    be thread safe. I let the user declare the following macro to
+    instantiate the required storage within each FLOG()/FLOGS() call
+    (in local scope):
     <pre>
-    FLOG_TIME_DEC
-    FLOG_TIME_ARG
+    FLOG_FORMAT_DEC
     </pre>
+    Some compilers will instantiate this item once at the start of a
+    function for all FLOG() calls therein. That boost stack size a ton.
+    If this really bothers the user, they can create some thread-local
+    storage outside the Flog configuration and reference that.
 </p>
+
+<h3>"Can formatting options be supported with non-variadic preprocessors?</h3>
 <p>
-    Here's an approximation of what a FLOG call looks like after it's passed
-    the compile-time and run-time checks (for GCC-style varadic macros):
-    <pre>
-    FLOG_TIME_DEC;
-    FLOG_PRINTF("%s%d %s%s%s%s%s" FMT ,
-            FLOG_TIME(FLOG_TIME_ARG),
-            FLOG_THREAD() ,
-            #SEVERITY "[" #MODULE "] ",
-            FILE_SHORTEN(__FILE__),
-            LINETOSTRING(__LINE__),
-            __FUNCTION__,
-            "() ",
-            ##ARGS);
-    </pre>
-</p>
-<p>
-    The flog_config.pl script can only emit the format options that are
-    enabled at compile-time.
-</p>
-<p>
-    I'm not sure what would be required to support these features with
-    non-variadic macros.
+    My gut says, "No." I'd have to think about it some more.
 </p>
 
 <h3>"Can formatting options be both compile-time and run-time configurable?</h3>
@@ -329,6 +332,12 @@
     For run-time, each option can check a flag to see if it's currently
     enabled and then pass in either an empty string or the valid value
     accordingly.
+</p>
+<p>
+    I solved this once when formatting was defined by the perl script and
+    again when using X-Macros. The X-Macro version is more obfuscated and
+    clumsy. But it works. Either way, the preprocessor ends up with
+    something like this for the typical series of format elements:
 </p>
 <p>
     <pre>
@@ -345,11 +354,9 @@
     </pre>
 </p>
 <p>
-    Note that the flog_config.pl script allows the user to specify each
-    of these as being always on or off, or run-time configurable. When
-    they're always on, the FLOG_FLAG() section and ternary operator is
-    omitted. When they're always off, the format and argument(s) for that
-    format option are fully omitted.
+    Each format item can be specified as 'always on', 'configurable on'
+    and 'configurable off'. Or it can be removed from the format
+    X-Macros to make it 'always off'.
 </p>
 <p>
     Also, that's getting pretty hefty...
@@ -357,7 +364,9 @@
 
 <h3>"Can the code size and number of parameters be reduced?"</h3>
 <p>
-    At this point, there are up to 7 extra parameters to printf:
+    The extra parameters to FLOG_PRINTF() may be concerning to some.
+    In the main example, the following individual arguments are passed
+    to each FLOG() call:
     <ul>
         <li>timestamp string</li>
         <li>thread id</li>
@@ -381,41 +390,24 @@
     logging facility if it's sent out a serial port or over UDP. 
 </p>
 <p>
-    Lastly, the run-time configuration code itself can be disabled
+    Also, the run-time configuration code itself can be disabled
     by setting FLOG_STATIC. The 'static' example does this just
     'cause it can. I've worked on platforms in the past that had
     very little breathing room for debug code. In such cases,
     every little bit counts. Disabling run-time checks improves
     performance slightly, too, so that's another help on such platforms.
 </p>
-
-<h3>"What about redundant file name and module/severity strings?"</h3>
 <p>
-    These are used "as-is" in the code. That way, the compiler has the
-    option of re-using duplicated strings. Of course, some compilers
-    are not sufficiently smart.
-</p>
-<p>
-    Note that this is in contrast to concatenating the strings in
-    each call. For example, the following could be done to perhaps
-    boost performance at the expense of code size:
-    <pre>
-    FLOG_PRINTF(
-            #SEVERITY "[" #MODULE "] "
-            __FILE__
-            LINETOSTRING(__LINE__)
-            "%s%s%s() " FMT ,
-            __FUNCTION__,
-            ##ARGS);
-    </pre>
-    Note also that the formatting is no longer run-time configurable.
-</p>
-
-<h3>"Can the format ordering be changed?"</h3>
-<p>
-    The flog_config.pl script could be tweaked to do so, perhaps via
-    encodings in the configuration file. I'd probably just hardcode
-    things if I needed to change the order.
+    Lastly, the module and severity are concatenated by the preprocessor.
+    They are not concatenated with the main FMT string as that
+    would bloat code like crazy. Still, it would probably reduce
+    code size in most cases to split the module and severity into
+    seperate format items. It's very likely that the code size increase
+    from adding an extra parameter to the FLOG_PRINTF() call is
+    smaller than the savings achieved by a compiler that could
+    now consolidate the redundant severities and modules.
+    Also, concatenating the strings with the main FMT string would
+    make them unconfigurable at run-time.
 </p>
 
 <h3>"What about the output method?"</h3>
@@ -431,38 +423,40 @@
     should be kept thread safe if the application is multi-threaded.
 </p>
 
-<h3>"Installation and configuration is a disaster."</h3>
+<h3>"Installation and configuration is messy."</h3>
 <p>
-    That wasn't a question.
+    It's messy because I chose to give the user options. The user is
+    in full control of most every aspect of Flog, defining each of
+    the following items:
+    <ul>
+        <li>Severities</li>
+        <li>Modules and their max/default severities</li>
+        <li>Format items</li>
+        <li>Output method</li>
+        <li>Dynamic vs static-only configuration</li>
+    </ul>
+    I think the compile-time configuration of all those things is
+    what makes it complicated. It's easy to write APIs that do
+    all these things. It's harder to do all those things at compile-time.
 </p>
 <p>
-    Regarding the configuration file used by the flog_config.pl script,
-    it's not a formal format. But it's pretty simple and intuitive
-    (says the guy that created it...). I think xml/xsd would be
-    super overkill. Not sure what else I could do. Maybe make it
-    perl code that gets imported by the perl script...? Eek. Or leave
-    it alone.
+    I convinced myself that the flog_config.pl script isn't always
+    required and let there be an X-Macro-only configuration.
 </p>
 <p>
-    As for installation, the Flog framework is mostly a header, the one
-    generated by the flog_config.pl script. For run-time configuration,
-    however, the companion flog.c file must be compiled and linked into
-    a project. The icky part is that flog.c must be recompiled with the
-    header generated by flog_config.pl. But that header is user-defined.
+    For run-time configuration, the flog.c file must be compiled and
+    linked into a project. And the user must call flog_init() before
+    using any other Flog APIs. The icky part is that flog.c must be
+    recompiled with the header flog header, either the one generated by
+    the user or the one generated by flog_config.pl. Since it's user defined,
+    I chose to let the user either modify flog.c to include the appropriate
+    header, or #include flog.c in a source file that includes the user's
+    header. Either way, yuck.
 </p>
 <p>
-    My current solution is to have the user either modify flog.c
-    to include the appropriate header, or #include flog.c in a source
-    file that includes the user's header. Either way, yuck.
-</p>
-<p>
-    Don't forget that the flog header must be regenerated whenever the
-    configuration changes. This should be added to the build system
-    if possible.
-</p>
-<p>
-    And this is what makes me wonder if the X-macro only solution might
-    have been the better compromise.
+    Also, when using flog_config.pl, the flog header must be regenerated
+    whenever the configuration changes. This should be added to the build
+    system if possible.
 </p>
 
 
@@ -525,7 +519,7 @@
     depends on FLOG_PRINTF being thread-safe. Usually fprintf() is.
     The one naughty part is that the timestamp is gleaned in a seperate
     call before invoking FLOG_PRINTF, so it might be out-of-date slightly.
-    That is, a chronology (for either single or multi processing):
+    That is, a sample chronology (for either single or multi processing):
     <pre>
     1 ThreadA.FLOG()
     2 ThreadA.timestamp()
@@ -546,9 +540,9 @@
 <p>
     Things I'd like to solve but am not sure how:
     <ul>
-        <li>Support for compilers that don't non-variadic macros</li>
+        <li>Support for compilers that don't have non-variadic macros</li>
         <li>Make installation and initial setup easier</li>
-        <li>Get rid of perl script and/or header generation</li>
+        <li>Combine the two format X-Macros into one</li>
     </ul>
 </p>
 

@@ -1,5 +1,4 @@
 Move sample programs under common 'sample' directory
-Document x-macro configuration, and compare/contrast with perl config, in readme/tradeoffs
-Add 'format argument must be a string literal' caveat for FLOG() calls
+Document x-macro configuration and compare/contrast with perl config in tradeoffs
 Add content to comparison.txt
 
