@@ -35,8 +35,7 @@ static int test_printf(const char *fmt, ...)
 
 
 /*
-    Override flec_log_auto.h with unit_flec_log_auto.h
-    which is generated from unit_flec_log.txt
+    Define test modules/severities:
         MINI, NONE
         MAXI, WEAK
         MIN_MAX, NONE, WEAK
@@ -70,6 +69,7 @@ static int test_printf(const char *fmt, ...)
     FLOG_ARGS_LIST_ITEM(LINE, CON, LINETOSTRING(__LINE__), "") \
     FLOG_ARGS_LIST_ITEM(FUNCTION, CON, __FUNCTION__, "") \
 
+/* Use the test printf to capture log output */
 #define FLOG_PRINTF test_printf
 
 #define FLOG_ASSERT(COND, FMT, ARGS...) \
@@ -81,8 +81,8 @@ static int test_printf(const char *fmt, ...)
     } while (0)
 
 #define FLOGX
-#include "../flog/flogx.h"
-#include "../flog/flog.c"
+#include "flogx.h"
+#include "flog.c"
 
 
 /* Test compile time settings */

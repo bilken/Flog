@@ -6,7 +6,7 @@
 //  a library. To put it in a library, the configuration part would
 //  need to be separated from the library part, but that makes this
 //  more complicated than I want.
-#include "../flog/flog.c"
+#include "flog.c"
 
 #include <stdlib.h>
 
@@ -26,8 +26,8 @@ static int parse_args(int argc, char ** argv)
 {
     while (argc-- > 1) {
         ++argv;
-        if (**argv != '-') {
-            char buf[1024];
+        if (**argv != '-' || strlen(*argv) > 2) {
+            static char buf[1024];
             flog_interact_s(*argv, buf, sizeof(buf));
             FLOG(INFO, LOG, "%s", buf);
         } else {
@@ -72,7 +72,7 @@ static int parse_args(int argc, char ** argv)
                     "       +|-foption  - Adjust formatting" << std::endl;
                 return 1;
             default:
-                std::cerr << "Unknown option: " << argv[1];
+                std::cerr << "Unknown option: " << *argv << std::endl;
                 return -1;
             }
         }

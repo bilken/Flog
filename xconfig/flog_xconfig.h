@@ -27,7 +27,7 @@
     FLOG_ARGS_LIST_ITEM(PAREN, COFF, "() ", "") \
 
 #define FLOGX
-#include "../flog/flogx.h"
+#include "flogx.h"
 
 #endif  /* __FLOG_XCONFIG_H__ */
 

@@ -5,6 +5,9 @@ APP_SOURCES := \
     static/static.cpp \
     xconfig/xconfig.cpp \
 
+SINCLUDES := \
+    flog \
+
 LIBNAME := libflog
 
 SOURCES := \
@@ -40,12 +43,8 @@ LOG_SIMPLE_CFG := $(SPATH)simple/config.txt
 LOG_STATIC_H := $(OPATH)flog_static.h
 LOG_STATIC_CFG := $(SPATH)static/config.txt
 
-LOG_TEST_H := $(OPATH)flog_test.h
-LOG_TEST_CFG := $(SPATH)test/config.txt
-
-
-LOGH := $(LOG_EXAMPLE_H) $(LOG_SIMPLE_H) $(LOG_STATIC_H) $(LOG_TEST_H)
-LOGCFG := $(LOG_EXAMPLE_CFG) $(LOG_SIMPLE_CFG) $(LOG_STATIC_CFG) $(LOG_TEST_CFG)
+LOGH := $(LOG_EXAMPLE_H) $(LOG_SIMPLE_H) $(LOG_STATIC_H)
+LOGCFG := $(LOG_EXAMPLE_CFG) $(LOG_SIMPLE_CFG) $(LOG_STATIC_CFG)
 
 $(LOGH) : $(LOG_CONFIG_PL) $(FLOGX_H)
 	$(QUIET)$(ECHO) "Build $@ from $+"; \
@@ -56,7 +55,6 @@ $(LOGH) : $(LOG_CONFIG_PL) $(FLOGX_H)
 $(LOG_EXAMPLE_H) : $(LOG_EXAMPLE_CFG)
 $(LOG_SIMPLE_H) : $(LOG_SIMPLE_CFG)
 $(LOG_STATIC_H) : $(LOG_STATIC_CFG)
-$(LOG_TEST_H) : $(LOG_TEST_CFG)
 
 FORCE_HEADERS += $(LOGH)
 

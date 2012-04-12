@@ -14,7 +14,7 @@
     FLOG_ARGS_LIST_ITEM(PAREN, COFF, "() ", "") \
 
 #include "flog_simple.h"
-#include "../flog/flog.c"
+#include "flog.c"
 
 #include <stdlib.h>
 #include <stdio.h>

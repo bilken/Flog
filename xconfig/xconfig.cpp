@@ -1,6 +1,6 @@
 
 #include "flog_xconfig.h"
-#include "../flog/flog.c"
+#include "flog.c"
 
 #include <stdlib.h>
 #include <stdio.h>
