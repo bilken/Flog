@@ -223,39 +223,32 @@ Configuration
         Formatting
 
             Logging generally includes some project specific content with
-            each log output. These elements can be defined in two X-Macros:
-                FLOG_FORMAT_LIST \
-                    FLOG_FORMAT_LIST_ITEM(NAME, FMT) \
-                FLOG_ARGS_LIST(SEVERITY, MODULE)
-                    FLOG_ARGS_LIST_ITEM(NAME, CFG, VALUE, NONVALUE) \
+            each log output. These elements can be defined in an X-Macros:
+                FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
+                    FLOG_FORMAT_LIST_ITEM(NAME, CFG, FMT, VALUE, NONVALUE, FA) \
 
-            The formatting is split into two partly redundant lists due to
-            the way the C preprocess works.
-
-            If both are left undefined, no formatting is added to each
-            FLOG/FLOGS call.
+            If left undefined, no formatting is added to each FLOG/FLOGS call.
 
             Each FLOG_FORMAT_LIST_ITEM element has the following parameters:
                 1) The name to be used in dynamic configuration
-                2) The printf-style format specifier. E.g. "%s".
-                    Note, this must be a string literal so that it can be
-                    concatenated with other format specifies and the FLOG()
-                    format specifier.
-
-            Each FLOG_ARGS_LIST_ITEM element has the following paremeters:
-                1) The name. This must match the FLOG_FORMAT_LIST_ITEM name.
                 2) The configuration specifier, one of the following:
                     ON   - The element is always present in log output
                     CON  - The element is configurable, on by default
                     COFF - The element is configurable, off by default
-                3) The value. This is the argument matching the format specifier
+                3) The printf-style format specifier. E.g. "%s".
+                    Note, this must be a string literal so that it can be
+                    concatenated with other format specifies and the FLOG()
+                    format specifier.
+                4) The value. This is the argument matching the format specifier
                     as defined in the corresponding FLOG_FORMAT_LIST_ITEM.
                     Note that the SEVERITY and MODULE names are available here
                     if needed.
-                4) The inhibited value. If the item is configurable at run-time,
+                5) The inhibited value. If the item is configurable at run-time,
                     this is the value to pass in place of the real value.
+                6) A place holder for X-Macro selection element selection.
+                    Must match the first parameter to FLOG_FORMAT_LIST().
 
-            The order of these lists matters. It defines the order in which they
+            The order of this list matters. It defines the order in which items
             appear on each log line. Note that Flog will always place the format
             elements ahead of the user's text on each line. The user is
             responsible for spacing of the elements either in the format

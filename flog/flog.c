@@ -117,9 +117,12 @@ static int _str_nccmp( const  char *s1, const  char *s2 )
 {
     int r = 0;
 
-    do {
+    while (*s1) {
         r = (*s1++ - *s2++) & ~0x20;
-    } while (*s1 && (r == 0));
+        if (r) {
+            break;
+        }
+    }
 
     if (*s2) {
         return 1;
