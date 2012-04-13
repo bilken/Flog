@@ -12,31 +12,12 @@
     FLOG_MODULE_LIST_ITEM( GHI, INFO, INFO ) \
     FLOG_MODULE_LIST_ITEM( LOG, INFO, INFO ) \
 
-#if 0
-#define FLOG_FORMAT_LIST \
-    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
-    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FUNCTION, "%s") \
-    FLOG_FORMAT_LIST_ITEM(PAREN, "%s") \
-
-#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
-    FLOG_ARGS_LIST_ITEM(SEVMOD, ON, #SEVERITY "[" #MODULE "] ", "") \
-    FLOG_ARGS_LIST_ITEM(FILE, CON, flog_file_name_shorten(__FILE__), "") \
-    FLOG_ARGS_LIST_ITEM(LINE, CON, LINETOSTRING(__LINE__), "") \
-    FLOG_ARGS_LIST_ITEM(FUNCTION, COFF, __FUNCTION__, "") \
-    FLOG_ARGS_LIST_ITEM(PAREN, COFF, "() ", "") \
-
-#else
-
 #define FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
     FLOG_FORMAT_LIST_ITEM(SEVMOD, ON, "%s", #SEVERITY "[" #MODULE "] ", "", FA) \
     FLOG_FORMAT_LIST_ITEM(FILE, CON, "%s", flog_file_name_shorten(__FILE__), "", FA) \
     FLOG_FORMAT_LIST_ITEM(LINE, CON, "%s", LINETOSTRING(__LINE__), "", FA) \
     FLOG_FORMAT_LIST_ITEM(FUNCTION, COFF, "%s", __FUNCTION__, "", FA) \
     FLOG_FORMAT_LIST_ITEM(PAREN, COFF, "%s", "() ", "", FA) \
-
-#endif
 
 #define FLOGX
 #include "flogx.h"
