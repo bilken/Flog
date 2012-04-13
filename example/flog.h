@@ -14,8 +14,8 @@
 
 #define FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
     FLOG_FORMAT_LIST_ITEM(TIMESTAMP, CON, "%s", flog_timestamp(TSSTR), "", FA) \
-    FLOG_FORMAT_LIST_ITEM(THREADID, ON, "%d", getpid(), 0, FA) \
-    FLOG_FORMAT_LIST_ITEM(SEVMOD, ON, "%s", #SEVERITY "[" #MODULE "] ", "", FA) \
+    FLOG_FORMAT_LIST_ITEM(THREADID, ON, "%d ", getpid(), 0, FA) \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, ON, "%12s", #SEVERITY "[" #MODULE "] ", "", FA) \
     FLOG_FORMAT_LIST_ITEM(FILE, CON, "%s", flog_file_name_shorten(__FILE__), "", FA) \
     FLOG_FORMAT_LIST_ITEM(LINE, CON, "%s", LINETOSTRING(__LINE__), "", FA) \
     FLOG_FORMAT_LIST_ITEM(FUNCTION, COFF, "%s", __FUNCTION__, "", FA) \

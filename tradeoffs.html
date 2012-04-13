@@ -83,6 +83,12 @@
     Fast forward to now, I've been granted permission to shared this code 
     and my experiences around it. Thanks to
     <a href="http://www.flec.tv">Flashlight</a>.
+    Of course, as I was preparing Flog for public consumption, I realized
+    that there were serious installation and configuration issues. And I
+    found a ton of other nits that I've plucked out of the thing while
+    making it ready for public viewing. Basically, it's not even the
+    same thing internally even though the APIs and behavior are roughly
+    the same.
 </p>
 
 
@@ -150,6 +156,11 @@
     </pre>
     Some won't, though. So I decided the preprocessor would be required
     for a truly portable solution to compile-time configuration.
+    For example:
+    <pre>
+    #define PRINTF_OFF(FMT, ...)
+    #define PRINTF_ON(FMT, ...) printf(FMT , __VA_ARGS__);
+    </pre>
 </p>
 
 <h3>"How do I define modules and severities?"</h3>
@@ -173,7 +184,8 @@
     Maybe that's not true, but I couldn't think of a way to generically
     trick the preprocessor into stubbing out inhibited module/severity pairs.
     I could do it if severity was global, but not with per-module
-    severities.
+    severities. Well, a user would have to map their entire matrix of
+    module/severity pairs to true/false values. Not really reasonable.
 </p>
 <p>
     So, Flog supports two methods of configuration. One relies on
@@ -192,7 +204,12 @@
     FLOG(FOOSEV, BARMOD, "No extra args\n");
     </pre>
     The mess is that I had to pass an extra empty string parameter
-    and add an extra %s to the format string. Oh, well.
+    and add an extra %s to the format string. That is:
+    <pre>
+    // Workaround for no-arg printf calls
+    #define OUTPUT_ANY_ARGS(FMT, ...) printf(FMT "%s", __VA_ARGS__, "")
+    </pre>
+    Another option for this case would be to define a seperate FLOG0() API.
 </p>
 <p>
     I haven't fully decided what to do if variadic macros aren't
@@ -264,29 +281,34 @@
 <h3>"What about format items, like time stamp, svr/mod, file/line, thread id?"</h3>
 <p>
     Given GCC and C99 style variadic macros, I can use string concatenation
-    to add extra formatting arguments to a printf string. And I can insert
-    extra arguments either before or after all other existing arguments.
-    I chose to put all the extra formatting items before, but that could be
-    changed. So the output looks something like:
+    to add extra formatting arguments to a printf string. For example, with
+    GCC, the following will prepend "hi! " along with other printf
+    content with each invocation of MY_PRINTF():
     <pre>
-    2012-04-06 14:30:53.415 6056 INFO[TEST] test.cpp[55] main() Test output works!
+    #define MY_PRINTF(FMT, ARGS...) printf("%s" FMT , "hi! " , ##ARGS)
     </pre>
 </p>
 <p>
     I originally intended the file/line elements to be a single entity.
     I found that concatinating the name with the line (when converted to
     a string) caused some compilers to store a ton of duplicate data.
-    For example: myfile.cpp[123] and myfile.cpp[125]. That is, the file
-    name was being represented once for every single log call. In some
-    source files, this was significant. I also found that some compilers
-    generate full-path file names which not only made the magnitude of the
-    duplication ridiculous but made the formatting ugly.
+    For example: "myfile.cpp[123]" and "myfile.cpp[125]". That is, the
+    file name was being duplicated once for every single log call. In some
+    source files with lots of log calls, this was significant. I also found
+    that some compilers generate full-path file names which not only made
+    the magnitude of the duplication ridiculous but made the formatting ugly.
     So, I wrote a function to seek past the last '/' (or '\\') character in
     the file name string. It solved both of those problems. The cost was
     that the file/line format now has two arguments. Performance-wise,
     I figured the boost from not outputting the full path outweighed the
     cost of finding the base name and passing an extra parameter. So it's
     mostly a win.
+</p>
+<p>
+    The reason that the __LINE__ is not passed as a %d is because I like
+    the file and line pair to look like "%s[%d]". Since the format strings
+    stay the same even when format values are configured off, that would
+    leave a "[0]" in the output when line numbers are disabled.
 </p>
 <p>
     Originally, the format generation was baked into the configuration script.
@@ -322,7 +344,7 @@
     storage outside the Flog configuration and reference that.
 </p>
 
-<h3>"Can formatting options be supported with non-variadic preprocessors?</h3>
+<h3>"Can formatting options be supported with non-variadic preprocessors?"</h3>
 <p>
     My gut says, "No." I'd have to think about it some more.
 </p>
@@ -408,6 +430,31 @@
     now consolidate the redundant severities and modules.
     Also, concatenating the strings with the main FMT string would
     make them unconfigurable at run-time.
+</p>
+
+<h3>"What about writing a printf function that doesn't require format strings?"</h3>
+<p>
+    Another option that I haven't really explored would be to create a
+    function to replace (or encapsulate) printf with a number of extra
+    arguments. For example:
+    <pre>
+    int special_printf(const char * fmt,
+            const char * severity,
+            const char * module,
+            const char * filename,
+            int line,
+            const char * function,
+            ...);
+    </pre>
+    The advantage should be reduced code size since the extra format strings
+    aren't used. The disadvantage would be that I'd have to rewrite a big
+    hunk of Flog. Meh.
+</p>
+<p>
+    If one were to pursue this path, it's important to only do the output in
+    a single step (or while holding exclusive control of the output method)
+    so that a single log call's output isn't split or corrupted. It'd be
+    tempting to plop out each item (if configured) one at a time.
 </p>
 
 <h3>"What about the output method?"</h3>
@@ -542,7 +589,6 @@
     <ul>
         <li>Support for compilers that don't have non-variadic macros</li>
         <li>Make installation and initial setup easier</li>
-        <li>Combine the two format X-Macros into one</li>
     </ul>
 </p>
 

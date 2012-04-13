@@ -311,8 +311,8 @@ Caveats
     2) The FMT string for FLOG() calls must be a string literal if any
         formatting is used. The format feature relies on string concatenation.
 
-    3) The FLOG_FORMAT_LIST_ITEM(NAME, FMT) FMT value must be a string
-        literal. Same reason as '2)' above.
+    3) In each FLOG_FORMAT_LIST_ITEM(NAME, CFG, FMT, ARG, DISARG, FA), the
+        FMT value must be a string literal. Same reason as '2)' above.
 
     4) Format specifies like %1$d aren't supported with FLOG() since the
         format values affect the numbering in obscure ways. However, if

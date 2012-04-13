@@ -50,7 +50,7 @@ sub generateDefs
             $i++;
 
             $defs{gccDefs} .= "#define FLOG_$s_$m(FMT, ARGS...) _FLOG_CHKDO($s, $m, FMT , ##ARGS)\n";
-            $defs{c99Defs} .= "#define FLOG_$s_$m(...) _FLOG_CHKDO($s, $m, __VA_ARGS__)\n";
+            $defs{c99Defs} .= "#define FLOG_$s_$m(...) _FLOG_CHKDO($s, $m, __VA_ARGS__, \"\")\n";
             $defs{noneDefs} .= "#define DP_FLOG_$s_$m(FMT_ARGS) IF_FLOG_SET($s, $m) { FLOG_PRINTF FMT_ARGS; }\n";
             $defs{strDefs} .= "#define FLOGS_$s_$m(SSTR) _FLOGS_CHKDO($s, $m, SSTR)\n";
             $defs{testDefs} .= "#define FLOG_TEST_$s_$m 1\n";

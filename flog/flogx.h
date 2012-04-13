@@ -75,6 +75,7 @@ enum {
 
 #define FLOG_FLAG(FF) (flog_flags & FLOG_FLAG_##FF)
 
+/* This mess provides each part of the format feature in turn. Look away. */
 #define FLOG_ARGA_CON(NAME, FMT, ARG, DISARG) , FLOG_FLAG(NAME) ? ARG : DISARG
 #define FLOG_ARGA_COFF(NAME, FMT, ARG, DISARG) , FLOG_FLAG(NAME) ? ARG : DISARG
 #define FLOG_ARGA_ON(NAME, FMT, ARG, DISARG) , ARG
@@ -196,10 +197,10 @@ extern const char *flog_file_name_shorten(const char *fn);
 
 #if FLOG_VA_TYPE == FLOG_VA_C99
 /* Note, the extra "" arg lets fmt-only FLOG() calls work */
-#ifndef FLOGX
+#ifdef FLOGX
 #define FLOG(SEVERITY, MODULE, ...) _FLOG_CHKDO(SEVERITY, MODULE, __VA_ARGS__, "")
 #else
-#define FLOG(SEVERITY, MODULE, ...) FLOGS_##SEVERITY##_##MODULE(__VA_ARGS__)
+#define FLOG(SEVERITY, MODULE, ...) FLOG_##SEVERITY##_##MODULE(__VA_ARGS__)
 #endif
 #define _FLOG_DO(SEVERITY, MODULE, FMT, ...) \
     FLOG_FORMAT_DEC FLOG_PRINTF(FLOG_FORMAT_LIST(F, na, na) FMT "%s" FLOG_FORMAT_LIST(A, SEVERITY, MODULE), __VA_ARGS__)

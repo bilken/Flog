@@ -1,4 +1,3 @@
 Move sample programs under common 'sample' directory
-Document x-macro configuration and compare/contrast with perl config in tradeoffs
 Add content to comparison.txt
 
