@@ -273,11 +273,7 @@ static const struct
 }
 flog_cfg[] =
 {
-#undef FLOG_FORMAT_LIST_ITEM
-#define FLOG_FORMAT_LIST_ITEM(name, fmt) {#name, FLOG_FLAG_##name},
-    FLOG_FORMAT_LIST
-#undef FLOG_FORMAT_LIST_ITEM
-#define FLOG_FORMAT_LIST_ITEM(name, fmt) fmt
+    FLOG_FORMAT_LIST(C, NA, NA)
 };
 
 static void _print_configs(psn_t * p)

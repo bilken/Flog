@@ -2,15 +2,10 @@
 /* Define flog elements for static-only project */
 #define FLOG_STATIC 1
 
-#define FLOG_FORMAT_LIST \
-    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
-    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
-
-#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
-    FLOG_ARGS_LIST_ITEM(SEVMOD, ON, #SEVERITY "[" #MODULE "] ", "") \
-    FLOG_ARGS_LIST_ITEM(FILE, ON, __FILE__, "") \
-    FLOG_ARGS_LIST_ITEM(LINE, ON, LINETOSTRING(__LINE__), "") \
+#define FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, ON, "%s", #SEVERITY "[" #MODULE "] ", "", FA) \
+    FLOG_FORMAT_LIST_ITEM(FILE, ON, "%s", __FILE__, "", FA) \
+    FLOG_FORMAT_LIST_ITEM(LINE, ON, "%s", LINETOSTRING(__LINE__), "", FA) \
 
 #include "flog_static.h"
 

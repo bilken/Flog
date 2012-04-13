@@ -1,17 +1,10 @@
 
-#define FLOG_FORMAT_LIST \
-    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
-    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FUNCTION, "%s") \
-    FLOG_FORMAT_LIST_ITEM(PAREN, "%s") \
-
-#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
-    FLOG_ARGS_LIST_ITEM(SEVMOD, CON, #SEVERITY "[" #MODULE "] ", "") \
-    FLOG_ARGS_LIST_ITEM(FILE, COFF, flog_file_name_shorten(__FILE__), "") \
-    FLOG_ARGS_LIST_ITEM(LINE, COFF, LINETOSTRING(__LINE__), "") \
-    FLOG_ARGS_LIST_ITEM(FUNCTION, COFF, __FUNCTION__, "") \
-    FLOG_ARGS_LIST_ITEM(PAREN, COFF, "() ", "") \
+#define FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, CON, "%s", #SEVERITY "[" #MODULE "] ", "", FA) \
+    FLOG_FORMAT_LIST_ITEM(FILE, COFF, "%s", flog_file_name_shorten(__FILE__), "", FA) \
+    FLOG_FORMAT_LIST_ITEM(LINE, COFF, "%s", LINETOSTRING(__LINE__), "", FA) \
+    FLOG_FORMAT_LIST_ITEM(FUNCTION, COFF, "%s", __FUNCTION__, "", FA) \
+    FLOG_FORMAT_LIST_ITEM(PAREN, COFF, "%s", "() ", "", FA) \
 
 #include "flog_simple.h"
 #include "flog.c"

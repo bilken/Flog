@@ -57,17 +57,11 @@ static int test_printf(const char *fmt, ...)
     FLOG_MODULE_LIST_ITEM( NORM, MID, MID ) \
     FLOG_MODULE_LIST_ITEM( SPLIT, MID, ROBUST ) \
 
-#define FLOG_FORMAT_LIST \
-    FLOG_FORMAT_LIST_ITEM(SEVMOD, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FILE, "%s") \
-    FLOG_FORMAT_LIST_ITEM(LINE, "%s") \
-    FLOG_FORMAT_LIST_ITEM(FUNCTION, "%s ") \
-
-#define FLOG_ARGS_LIST(SEVERITY, MODULE) \
-    FLOG_ARGS_LIST_ITEM(SEVMOD, CON, #SEVERITY "[" #MODULE "] ", "") \
-    FLOG_ARGS_LIST_ITEM(FILE, CON, flog_file_name_shorten(__FILE__), "") \
-    FLOG_ARGS_LIST_ITEM(LINE, CON, LINETOSTRING(__LINE__), "") \
-    FLOG_ARGS_LIST_ITEM(FUNCTION, CON, __FUNCTION__, "") \
+#define FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
+    FLOG_FORMAT_LIST_ITEM(SEVMOD, CON, "%s", #SEVERITY "[" #MODULE "] ", "", FA) \
+    FLOG_FORMAT_LIST_ITEM(FILE, CON, "%s", flog_file_name_shorten(__FILE__), "", FA) \
+    FLOG_FORMAT_LIST_ITEM(LINE, CON, "%s", LINETOSTRING(__LINE__), "", FA) \
+    FLOG_FORMAT_LIST_ITEM(FUNCTION, CON, "%s", __FUNCTION__, "", FA) \
 
 /* Use the test printf to capture log output */
 #define FLOG_PRINTF test_printf
