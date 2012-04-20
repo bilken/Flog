@@ -2,13 +2,13 @@
 Flog logging
 
     Flog is a C/C++ logging facility with the following features:
-        * Highly configurable, both at compile-time and run-time, for each
-            user-defined log module independently.
+        * Highly configurable, both at compile-time and run-time.
+            * User-defined severities
+            * User-defined log modules
+            * User-defined formatting
+        * Minimal run time cost (i.e. high performance)
         * Fully C compliant
         * Optional ostream-style interface for C++
-        * User-defined formatting, configurable at compile-time and run-time.
-        * Minimal code size
-        * Minimal run time cost (i.e. high performance)
         * Public domain license
 
     Written by Billy Kennemer <eyepits@gmail.com>. Reimplemented from
@@ -24,7 +24,7 @@ Usage
         FLOGS(SEVERITY, MODULE, "Value: (" << val << ")" << std::endl);
 
     Log calls will be inhibited at compile-time when the maximum SEVERITY
-    for the MODULE is less severe than the FLOG/FLOGS call's SEVERITY.
+    for the MODULE is more severe than the FLOG/FLOGS call's SEVERITY.
 
     At run-time, if dynamic configuration is enabled, log calls will be
     inhibited when the current assigned SEVERITY for the MODULE is less
@@ -158,8 +158,8 @@ Configuration
             An example:
                 xconfig/flog_xconfig.h
 
-            Define severities and modules using the following
-            X-Macro declarations:
+            Define severities and modules using the following X-Macro
+            declarations:
                 FLOG_SEVERITY_LIST
                 FLOG_MODULE_LIST
 
@@ -240,18 +240,20 @@ Configuration
         Output destination
 
             The output destination defaults to stdout. To change this, define
-            the FLOG_PRINTF macro as needed. It should be a function that
-            has the same signature as printf(), i.e.:
-                int FLOG_PRINTF(const char * fmt, ...);
+            the FLOG_PRINTF macro as needed. It should be a declared function
+            that has the same signature as printf(), i.e.:
+                int yourPrintf(const char * fmt, ...);
+                #define FLOG_PRINTF yourPrintf
 
             See example/flog.h for one example.
 
         Formatting
 
             Logging generally includes some project specific content with
-            each log line. These elements can be defined in an X-Macros:
-                FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
+            each log line. These elements can be defined in an X-Macro:
+                #define FLOG_FORMAT_LIST(FA, SEVERITY, MODULE) \
                     FLOG_FORMAT_LIST_ITEM(NAME, CFG, FMT, VALUE, NONVALUE, FA) \
+                    ...
 
             If left undefined, no formatting is added to each FLOG/FLOGS call.
 
@@ -285,7 +287,7 @@ Configuration
             using unique names that won't clash with other local symbols --
             with the FLOG_FORMAT_DEC macro. For example:
                 #define FLOG_FORMAT_DEC  some_struct_t myFormatParam;
-            That variable will be available to each FLOG_ARGS_LIST_ITEM.
+            That variable will be available to each FLOG_FORMAT_LIST_ITEM.
 
             See example/flog.h for a full example.
             See simple/simple.c for a minimal example.
@@ -293,7 +295,7 @@ Configuration
     Dynamic configuration
 
         If dynamic configuration is not desired, define FLOG_STATIC.
-        When used, FLOG_ARGS_LIST_ITEMs must only use the 'ON' configuration.
+        When used, FLOG_FORMAT_LIST_ITEMs must only use the 'ON' configuration.
         See static/static.cpp for an example.
 
         If dynamic configuration is desired, two extra steps are required:
